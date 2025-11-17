@@ -20,6 +20,9 @@
         </header>
 
         <!-- Add Song Section (moved under header) -->
+        <!-- Top notifications: floating toasts appear here -->
+        <div id="top-notifications" class="top-notifications" aria-live="polite" aria-atomic="true"></div>
+
         <section class="add-song-section">
             <h2>Add a Song (YouTube only right now)</h2>
             <form id="add-song-form">
@@ -51,7 +54,7 @@
                     <span>🔍</span> Search
                 </button>
             </form>
-            <div id="message" class="message"></div>
+            <!-- inline message removed in favor of top-floating toasts -->
         </section>
 
         <!-- Bento menu: quick actions including YouTube sign-in -->

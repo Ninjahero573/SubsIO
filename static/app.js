@@ -49,7 +49,8 @@ function initializeDOMElements() {
     // Single combined input used for both URLs and search terms
     songUrlInput = document.getElementById('song-or-search');
     addedByInput = document.getElementById('added-by');
-    messageDiv = document.getElementById('message');
+    // point to the floating toast container
+    messageDiv = document.getElementById('top-notifications');
     nowPlayingDiv = document.getElementById('now-playing');
     queueDiv = document.getElementById('queue');
     queueCountSpan = document.getElementById('queue-count');
@@ -351,13 +352,47 @@ function setupNowPlayingQueueToggle() {
 }
 
 // Show Message
-function showMessage(text, type) {
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${type}`;
-    
-    setTimeout(() => {
-        messageDiv.className = 'message';
-    }, 5000);
+// Show Message
+function showMessage(text, type='info', opts={}) {
+    // type: 'success' | 'error' | 'info'
+    if (!messageDiv) return;
+
+    const id = `toast-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : ''}`;
+    toast.id = id;
+
+    const msg = document.createElement('div');
+    msg.className = 'toast-message';
+    msg.textContent = text;
+
+    const close = document.createElement('button');
+    close.className = 'toast-close';
+    close.setAttribute('aria-label', 'Dismiss notification');
+    close.innerHTML = '✕';
+    close.addEventListener('click', () => {
+        dismissToast(toast);
+    });
+
+    toast.appendChild(msg);
+    toast.appendChild(close);
+
+    // Insert at top so newest appear first
+    messageDiv.insertAdjacentElement('afterbegin', toast);
+
+    // Auto-dismiss after timeout unless opts.sticky
+    const timeout = (opts && opts.timeout) ? opts.timeout : 5000;
+    if (!opts.sticky) {
+        setTimeout(() => dismissToast(toast), timeout);
+    }
+}
+
+function dismissToast(el) {
+    if (!el) return;
+    el.style.transition = 'opacity 180ms ease, transform 180ms ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-6px) scale(0.98)';
+    setTimeout(() => { try { el.remove(); } catch(e){} }, 200);
 }
 
 // Utility Functions
