@@ -19,6 +19,41 @@
             </div>
         </header>
 
+        <!-- Add Song Section (moved under header) -->
+        <section class="add-song-section">
+            <h2>Add a Song (YouTube only right now)</h2>
+            <form id="add-song-form">
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="song-or-search" 
+                        placeholder="Paste YouTube URL or enter a search term..."
+                    >
+                    <div id="link-results" class="search-results"></div>
+                    <div id="search-status" class="search-status"></div>
+                    <div id="search-results" class="search-results"></div>
+                </div>
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="added-by" 
+                        placeholder="Your name (optional)"
+                        maxlength="50"
+                    >
+                </div>
+                <div class="form-group user-settings">
+                    <span id="current-user" class="user-pill">Name: <strong>Anonymous</strong></span>
+                    <button type="button" id="change-name-btn" class="link-btn" aria-label="Edit name">✎</button>
+                    <button type="button" id="clear-name-btn" class="link-btn" aria-label="Clear name">✖</button>
+                    
+                </div>
+                <button type="submit" id="add-btn" class="primary-btn">
+                    <span>🔍</span> Search
+                </button>
+            </form>
+            <div id="message" class="message"></div>
+        </section>
+
         <!-- Bento menu: quick actions including YouTube sign-in -->
         <div class="bento-grid" role="list" aria-label="Quick actions">
             <button class="bento-item" id="bento-search" type="button" role="listitem" aria-label="Search or add a song">
@@ -37,12 +72,12 @@
                 <img class="spotify-img" src="/images/spotify.jpg" alt="Spotify" />
             </a>
 
-            <a class="bento-item" href="https://soundcloud.com" target="_blank" rel="noopener" role="listitem" aria-label="Open SoundCloud">
+            <button class="bento-item" id="bento-queue" type="button" role="listitem" aria-label="Open queue" title="Open queue">
                 <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                    <path fill="currentColor" d="M6.5 15.5c-.3 0-.5-.3-.5-.6 0-.3.2-.5.5-.5.7 0 1.4.2 1.9.6.1.1 0 .3-.1.3-.5.1-1.1.2-1.8.2zM3 12.5c0-.3.2-.6.5-.6.3 0 .5.2.5.5 0 .3-.2.6-.5.6-.3 0-.5-.3-.5-.5zM2 10c0-.3.2-.6.5-.6.3 0 .5.2.5.5 0 .3-.2.6-.5.6C2.2 10.5 2 10.3 2 10zM4 8.5c0-.3.2-.6.5-.6.3 0 .5.2.5.5 0 .3-.2.6-.5.6-.3 0-.5-.3-.5-.5zM20 14c-.1 0-.2 0-.3.1-.9-1.3-2.7-2.1-4.6-2.1-1.1 0-2.2.3-3.1.9-.1 0-.2.1-.3.1-1.1 0-2 .8-2 1.9v.6h11c1.4 0 2.5-1.2 2.5-2.5S21.4 12.5 20 12.5c-.2 0-.3 0-.4.1z"/>
+                    <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h12v2H3v-2zm0 5h6v2H3v-2z"/>
                 </svg>
-                <div class="bento-label">SoundCloud</div>
-            </a>
+                <div class="bento-label">Queue</div>
+            </button>
         </div>
 
         <main>
@@ -61,40 +96,7 @@
                     </div>
                 </div>
             </section>
-            <!-- Add Song Section -->
-            <section class="add-song-section">
-                <h2>Add a Song (YouTube only right now)</h2>
-                <form id="add-song-form">
-                    <div class="form-group">
-                        <input 
-                            type="text" 
-                            id="song-or-search" 
-                            placeholder="Paste YouTube URL or enter a search term..."
-                        >
-                        <div id="link-results" class="search-results"></div>
-                        <div id="search-status" class="search-status"></div>
-                        <div id="search-results" class="search-results"></div>
-                    </div>
-                    <div class="form-group">
-                        <input 
-                            type="text" 
-                            id="added-by" 
-                            placeholder="Your name (optional)"
-                            maxlength="50"
-                        >
-                    </div>
-                    <div class="form-group user-settings">
-                        <span id="current-user" class="user-pill">Name: <strong>Anonymous</strong></span>
-                        <button type="button" id="change-name-btn" class="link-btn" aria-label="Edit name">✎</button>
-                        <button type="button" id="clear-name-btn" class="link-btn" aria-label="Clear name">✖</button>
-                        
-                    </div>
-                    <button type="submit" id="add-btn" class="primary-btn">
-                        <span>🔍</span> Search
-                    </button>
-                </form>
-                <div id="message" class="message"></div>
-            </section>
+            <!-- Add Song moved under header -->
             
             <!-- Search & Browse Section (no longer used for input/results) -->
 
