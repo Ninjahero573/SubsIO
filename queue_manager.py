@@ -1,0 +1,308 @@
+"""
+Queue Manager - Handles the song queue and downloads
+"""
+import os
+import uuid
+import json
+import yt_dlp
+from mutagen import File
+from threading import Lock
+import time
+import glob
+
+
+class QueueManager:
+    def __init__(self):
+        self.queue = []
+        self.current_song = None
+        self.is_playing = False
+        self.lock = Lock()
+        self.download_dir = 'downloads'
+        os.makedirs(self.download_dir, exist_ok=True)
+        self.cache_index_file = os.path.join(self.download_dir, 'cache_index.json')
+        self.cache_index = {}
+        self._load_cache_index()
+    
+    def add_song(self, url, added_by='Anonymous'):
+        """Add a song to the queue"""
+        with self.lock:
+            song_id = str(uuid.uuid4())
+            
+            # Get song info using yt-dlp
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': False,
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                song = {
+                    'id': song_id,
+                    'url': url,
+                    'video_id': info.get('id'),
+                    'title': info.get('title', 'Unknown'),
+                    'artist': info.get('artist') or info.get('uploader', 'Unknown'),
+                    'duration': info.get('duration', 0),
+                    'thumbnail': info.get('thumbnail', ''),
+                    'added_by': added_by,
+                    # New fields for pre-processing and UI feedback
+                    'status': 'queued',      # queued, downloading, analyzing, generating, ready, playing, error
+                    'progress': 0,           # 0-100 overall pre-processing progress
+                    'stage': 'queued',       # human-readable stage label
+                }
+            
+            self.queue.append(song)
+            return song_id
+    
+    def download_song(self, song_data, progress_callback=None):
+        """Download a song
+        
+        Args:
+            song_data: Song dictionary with 'id' and 'url' keys
+        """
+        song_id = song_data['id']
+        url = song_data['url']
+        
+        output_path = os.path.join(self.download_dir, f"{song_id}.mp3")
+        
+        # Check if already downloaded
+        if os.path.exists(output_path):
+            return output_path
+        
+        # Progress hook to report granular download progress
+        def _progress_hook(d):
+            try:
+                status = d.get('status')
+                if status == 'downloading':
+                    downloaded = d.get('downloaded_bytes') or 0
+                    total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+                    pct = 0
+                    if total and total > 0:
+                        pct = int(downloaded * 100 / total)
+                    if progress_callback:
+                        try:
+                            progress_callback(song_id, 'downloading', pct)
+                        except Exception:
+                            pass
+                elif status == 'finished':
+                    if progress_callback:
+                        try:
+                            progress_callback(song_id, 'buffering', 100)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        # On Windows, attempts to rename .part -> final can fail if another
+        # process briefly holds a handle (antivirus, ffmpeg, etc.). Disable
+        # .part usage on Windows to avoid the rename step; also add a small
+        # retry loop that cleans up stale .part files between attempts.
+        use_nopart = os.name == 'nt'
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'outtmpl': os.path.join(self.download_dir, f"{song_id}.%(ext)s"),
+            'quiet': True,
+            'no_warnings': True,
+            'progress_hooks': [_progress_hook],
+        }
+
+        if use_nopart:
+            # Prevent creation of .part temporary files on Windows
+            ydl_opts['nopart'] = True
+
+        max_attempts = 5
+        last_exc = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                last_exc = None
+                break
+            except Exception as e:
+                last_exc = e
+                # If it's a permission error or a Windows file lock situation,
+                # attempt a small backoff and try to remove any stale .part
+                # files that may be blocking the rename.
+                msg = str(e).lower()
+                if 'permission' in msg or 'access' in msg or os.name == 'nt':
+                    # try to remove any matching .part files (best-effort)
+                    try:
+                        pattern = os.path.join(self.download_dir, f"{song_id}.*.part")
+                        for p in glob.glob(pattern):
+                            try:
+                                os.remove(p)
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+
+                    sleep_for = attempt * 0.8
+                    time.sleep(sleep_for)
+                    continue
+                else:
+                    # Non-file-lock error: re-raise immediately
+                    raise
+
+        if last_exc:
+            print(f"Error downloading song after {max_attempts} attempts: {last_exc}")
+            raise last_exc
+        
+        # Register in cache index so future adds can reuse this file
+        try:
+            vid = song_data.get('video_id') or None
+            if vid:
+                self._register_cache(vid, output_path, {'title': song_data.get('title')})
+        except Exception:
+            pass
+        
+        return output_path
+
+    def ensure_downloaded(self, song_data, progress_callback=None):
+        """Ensure a song's audio file is present on disk.
+
+        This is a thin wrapper around download_song that first checks for
+        an existing cached file. It is safe to call from a background
+        prefetch thread.
+        """
+        song_id = song_data['id']
+        output_path = os.path.join(self.download_dir, f"{song_id}.mp3")
+        # If we have a cached mapping for this video's source id, reuse it
+        try:
+            vid = song_data.get('video_id')
+            if vid:
+                cached = self.get_cached_path(vid)
+                if cached and os.path.exists(cached):
+                    if progress_callback:
+                        try:
+                            progress_callback(song_data['id'], 'buffering', 100)
+                        except Exception:
+                            pass
+                    return cached
+        except Exception:
+            pass
+
+        if os.path.exists(output_path):
+            # If file already exists (by song id), register it for its video id
+            try:
+                vid = song_data.get('video_id')
+                if vid:
+                    self._register_cache(vid, output_path, {'title': song_data.get('title')})
+            except Exception:
+                pass
+            if progress_callback:
+                try:
+                    progress_callback(song_data['id'], 'buffering', 100)
+                except Exception:
+                    pass
+            return output_path
+
+        return self.download_song(song_data, progress_callback=progress_callback)
+    
+    def get_queue(self):
+        """Get the current queue"""
+        with self.lock:
+            return {
+                'queue': self.queue,
+                'current': self.current_song,
+                'is_playing': self.is_playing
+            }
+    
+    def get_next_song(self):
+        """Get the next song from the queue"""
+        with self.lock:
+            if self.queue:
+                self.current_song = self.queue.pop(0)
+                return self.current_song
+            return None
+
+    def peek_next(self):
+        """Return the next song in the queue without removing it."""
+        with self.lock:
+            if self.queue:
+                return self.queue[0]
+            return None
+
+    def pop_next(self):
+        """Pop the next song from the queue and mark it as current."""
+        with self.lock:
+            if self.queue:
+                self.current_song = self.queue.pop(0)
+                return self.current_song
+            return None
+    
+    def has_next(self):
+        """Check if there are songs in the queue"""
+        with self.lock:
+            return len(self.queue) > 0
+
+    # --- Cache index helpers -------------------------------------------------
+    def _load_cache_index(self):
+        try:
+            if os.path.exists(self.cache_index_file):
+                with open(self.cache_index_file, 'r', encoding='utf-8') as f:
+                    self.cache_index = json.load(f)
+            else:
+                self.cache_index = {}
+        except Exception:
+            self.cache_index = {}
+
+    def _save_cache_index(self):
+        try:
+            with open(self.cache_index_file, 'w', encoding='utf-8') as f:
+                json.dump(self.cache_index, f)
+        except Exception:
+            pass
+
+    def _register_cache(self, video_id, filepath, metadata=None):
+        try:
+            self.cache_index[video_id] = {
+                'path': filepath,
+                'meta': metadata or {},
+            }
+            self._save_cache_index()
+        except Exception:
+            pass
+
+    def get_cached_path(self, video_id):
+        try:
+            entry = self.cache_index.get(video_id)
+            if not entry:
+                return None
+            return entry.get('path')
+        except Exception:
+            return None
+    
+    def get_current_song(self):
+        """Get the currently playing song"""
+        with self.lock:
+            return self.current_song
+    
+    def set_playing(self, playing):
+        """Set the playing status"""
+        with self.lock:
+            self.is_playing = playing
+
+    def clear_current(self):
+        """Clear the current song (used when playback finishes or is skipped)."""
+        with self.lock:
+            self.current_song = None
+            self.is_playing = False
+    
+    def skip_current(self):
+        """Skip the current song"""
+        with self.lock:
+            self.current_song = None
+            self.is_playing = False
+    
+    def remove_song(self, song_id):
+        """Remove a song from the queue"""
+        with self.lock:
+            self.queue = [s for s in self.queue if s['id'] != song_id]

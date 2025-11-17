@@ -1,0 +1,1381 @@
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --bg-input: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --header-height: 72px;
+    --now-playing-height: 72px;
+    /* Collapsed mobile now-playing bar target (used for animated max-height) */
+    --now-playing-collapsed: 80px;
+    --np-panel-height: 0px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 20px;
+    /* leave space at bottom for the persistent now-playing bar and optional queue panel */
+    padding-bottom: calc(var(--now-playing-height) + var(--np-panel-height, 0px) + 32px);
+}
+
+.container {
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+header {
+    margin-bottom: 28px;
+    padding: 18px 24px;
+    background: var(--bg-card);
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.header-left {
+    flex: 1 1 auto;
+    text-align: center;
+}
+
+h1 {
+    text-align: center;
+    font-size: 3em;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1.2em;
+}
+
+ main {
+     display: grid;
+     gap: 20px;
+     grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr);
+     max-width: 1320px; /* match container/header */
+     margin: 0 auto;
+     align-items: start;
+ }
+
+section {
+    background: var(--bg-card);
+    padding: 22px 20px;
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.55);
+}
+
+h2 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 1.5em;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+}
+
+/* Ensure headings don't add unexpected top spacing */
+h2, h3 {
+    margin-top: 0;
+}
+
+/* Add Song Form */
+.form-group {
+    margin-bottom: 15px;
+}
+
+/* User name small controls (sleek) */
+.user-settings {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-pill {
+    background: rgba(255,255,255,0.03);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.95em;
+    border: 1px solid rgba(255,255,255,0.04);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* YouTube logo button placed below the header title */
+
+.youtube-login-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 8px;
+}
+
+/* YouTube sign-in button: solid red rectangle with centered white triangle */
+#youtube-login-btn.youtube-logo-btn {
+    background: #FF0000; /* YouTube red */
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    border-radius: 8px;
+    width: 56px;
+    height: 36px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+#youtube-login-btn.youtube-logo-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(255,0,0,0.18);
+}
+
+/* draw the white play/triangle using a CSS triangle pseudo-element */
+#youtube-login-btn.youtube-logo-btn::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 12px solid #fff;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    display: block;
+    transform: translateX(2px);
+}
+
+/* Signed-in state: subtle green glow */
+#youtube-login-btn.signed-in {
+    box-shadow: 0 8px 28px rgba(16,185,129,0.12);
+}
+
+/* Bento menu styles */
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+}
+
+.bento-item {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    color: var(--text-primary);
+    min-height: 96px;
+}
+
+.bento-item:focus,
+.bento-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.5);
+}
+
+.bento-icon {
+    width: 36px;
+    height: 36px;
+    color: var(--primary-color);
+}
+
+.bento-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+/* Make sure svg youtube-logo inside the tile scales neatly */
+.bento-item .youtube-logo {
+    width: 56px;
+    height: 36px;
+}
+
+/* Make the entire YouTube bento tile a clickable image tile */
+.bento-item.youtube-login-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    position: relative;
+    padding: 0; /* allow image to fill tile */
+    min-height: 96px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Spotify tile: green logo-only clickable tile */
+.bento-item.spotify-link {
+    background: #1DB954; /* Spotify green */
+    border: none;
+    color: #fff;
+    position: relative;
+    /* remove internal padding so the image can fill the whole tile */
+    padding: 0;
+    min-height: 96px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* ensure the image doesn't overflow rounded corners */
+}
+
+.bento-item.spotify-link .spotify-logo,
+.bento-item.spotify-link .bento-icon {
+    width: 44px;
+    height: 44px;
+    display: block;
+}
+
+/* When using the shipped bitmap, size and center it inside the tile */
+.bento-item.spotify-link .spotify-img,
+.bento-item.spotify-link img.spotify-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* fill the tile while preserving aspect */
+    display: block;
+    border-radius: 12px; /* match tile rounding */
+}
+
+/* YouTube image sizing inside the tile (fill the whole tile) */
+.bento-item.youtube-login-btn .youtube-img,
+.bento-item.youtube-login-btn img.youtube-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 12px; /* match tile rounding */
+}
+
+/* Ensure the SVG path is rendered crisp and filled white regardless of inline attributes */
+.bento-item.spotify-link .spotify-logo {
+    display: block;
+    width: 44px;
+    height: 44px;
+}
+
+/* Use stroked arcs for the multi-path Spotify logo so the three lines render centered and crisp */
+.bento-item.spotify-link .spotify-logo path {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    shape-rendering: geometricPrecision;
+}
+
+.bento-item.spotify-link:focus {
+    outline: none;
+    box-shadow: 0 8px 24px rgba(29,185,84,0.18);
+}
+
+
+/* center a white play triangle inside the tile (no visible label) */
+.bento-item.youtube-login-btn::before {
+    /* legacy triangle — hide when using image */
+    display: none !important;
+}
+
+.bento-item.youtube-login-btn:focus {
+    outline: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* Signed-in variation: show a subtle 'connected' ring */
+#youtube-login-btn.signed-in .youtube-logo {
+    filter: drop-shadow(0 6px 14px rgba(16,185,129,0.12));
+}
+
+.header-controls .primary-btn {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.95em;
+}
+
+/* On small screens, move the header-controls below the title */
+@media (max-width: 600px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .header-controls {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+
+/* Pin the header controls to the far right of the viewport on wide screens */
+@media (min-width: 901px) {
+    .header-controls {
+        position: fixed;
+        right: 20px;
+        top: 20px;
+        z-index: 1200;
+        background: transparent;
+    }
+}
+
+.link-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    font-size: 0.95em;
+    padding: 0;
+}
+
+.link-btn:hover {
+    background: rgba(99,102,241,0.12);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.link-btn[aria-label="Clear name"] {
+    color: rgba(239,68,68,0.85);
+}
+
+.link-btn[aria-label="Clear name"]:hover {
+    background: rgba(239,68,68,0.12);
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 15px;
+    background: var(--bg-input);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 1em;
+    transition: all 0.3s;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.primary-btn,
+button[type="submit"] {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.primary-btn:hover,
+button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.primary-btn:active,
+button[type="submit"]:active {
+    transform: translateY(0);
+}
+
+.message {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 10px;
+    display: none;
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message.success {
+    background: rgba(16, 185, 129, 0.2);
+    border: 2px solid var(--success-color);
+    color: var(--success-color);
+    display: block;
+}
+
+.message.error {
+    background: rgba(239, 68, 68, 0.2);
+    border: 2px solid var(--error-color);
+    color: var(--error-color);
+    display: block;
+}
+
+/* Now Playing */
+.now-playing-card {
+    background: var(--bg-input);
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid var(--primary-color);
+}
+
+.now-playing-card.playing {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        border-color: var(--primary-color);
+    }
+    50% {
+        border-color: var(--secondary-color);
+    }
+}
+
+.song-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.song-thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.song-info {
+    flex: 1;
+}
+
+.song-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.song-artist {
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.song-meta {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+/* Queue */
+.queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.queue-item {
+    background: var(--bg-input);
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.2s;
+}
+
+.queue-item:hover {
+    transform: translateX(5px);
+}
+
+.queue-number {
+    background: var(--primary-color);
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.empty-state .icon {
+    font-size: 3em;
+    display: block;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+/* LED Status */
+.led-strips {
+    display: grid;
+    gap: 20px;
+}
+
+.led-strip {
+    background: var(--bg-input);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.led-strip-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+}
+
+.led-bar {
+    height: 30px;
+    background: linear-gradient(90deg, #000 0%, #333 100%);
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+}
+
+.led-bar.active {
+    animation: ledGlow 1s infinite;
+}
+
+@keyframes ledGlow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.8);
+    }
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    color: var(--text-secondary);
+}
+
+.connection-status {
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+#connection-status {
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+#connection-status.connected {
+    color: var(--success-color);
+}
+
+#connection-status.disconnected {
+    color: var(--error-color);
+}
+
+/* Media Controls */
+.media-controls-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.playback-progress {
+    margin-bottom: 20px;
+}
+
+.time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.progress-slider {
+    position: relative;
+    height: 6px;
+    background: rgba(99, 102, 241, 0.2);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.progress-slider input[type="range"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    border-radius: 5px;
+    z-index: 5;
+}
+
+.progress-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+    transition: all 0.2s;
+}
+
+.progress-slider input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.8);
+}
+
+.progress-slider input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+    transition: all 0.2s;
+}
+
+.progress-slider input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.8);
+}
+
+.slider-fill {
+    position: absolute;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 5px;
+    pointer-events: none;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.control-buttons {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.control-btn.play-pause {
+    /* Match the smaller toggle style so play button looks like the queue button */
+    width: 42px;
+    height: 42px;
+    font-size: 1.1em;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.control-btn.play-pause:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.08);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 10px;
+}
+
+.volume-control label {
+    font-size: 1.3em;
+}
+
+.volume-control input[type="range"] {
+    width: 100px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(99, 102, 241, 0.2);
+    border-radius: 5px;
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+}
+
+.volume-control input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    border: none;
+    cursor: pointer;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 10px;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.progress-stage {
+    font-weight: 600;
+    color: var(--primary-color);
+    text-transform: capitalize;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2em;
+    }
+    
+    main {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    section {
+        padding: 18px 16px;
+    }
+}
+
+.search-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.search-result {
+    background: var(--bg-input);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.search-result .song-info {
+    flex: 1;
+}
+
+/* On medium screens, two per row */
+@media (min-width: 600px) {
+    .search-result {
+        width: calc(50% - 15px);
+    }
+}
+
+/* On larger screens, three per row */
+@media (min-width: 900px) {
+    .search-result {
+        width: calc(33.333% - 15px);
+    }
+}
+
+/* Search results layout */
+.search-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.search-result {
+    background: var(--bg-input);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.search-result .song-info {
+    flex: 1;
+}
+
+.search-more-btn {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--primary-color);
+    background: transparent;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.95em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.search-more-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+/* On medium screens, two search cards per row */
+@media (min-width: 600px) {
+    .search-result {
+        width: calc(50% - 15px);
+    }
+}
+
+/* On large screens, three search cards per row */
+@media (min-width: 900px) {
+    .search-result {
+        width: calc(33.333% - 15px);
+    }
+}
+
+/* YouTube Playlists Right Column Layout */
+@media (min-width: 900px) {
+    /* Use grid columns for layout; playlists live in the right column and scroll normally. */
+    main {
+        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr);
+        gap: 24px;
+    }
+
+    #youtube-playlists-panel {
+        /* Make the playlists panel a full-width card above the main columns */
+        grid-column: 1 / -1;
+        position: relative;
+        width: 100%;
+        max-height: none;
+        overflow: visible;
+        padding: 12px 16px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(15,23,42,0.85), rgba(15,23,42,0.98));
+        border: 1px solid rgba(148,163,184,0.4);
+    }
+
+    /* inside the full-width playlists card, arrange two columns */
+    .youtube-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .yt-column {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .yt-playlists,
+    .yt-playlist-items {
+        max-height: 360px;
+        overflow-y: auto;
+        padding: 8px;
+        border-radius: 10px;
+    }
+
+    .add-song-section,
+    .now-playing-section,
+    .queue-section {
+        grid-column: 1 / -1; /* span full width under header */
+        margin-top: 0;
+        padding: 18px 20px; /* consistent card padding */
+        width: 100%;
+    }
+
+    .yt-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .yt-playlists,
+    .yt-playlist-items {
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 8px;
+        overflow-y: auto;
+        max-height: calc((100vh - 260px) / 2);
+    }
+
+    .yt-playlist-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.12s, transform 0.08s;
+    }
+
+    .yt-playlist-item:hover {
+        background: rgba(99,102,241,0.06);
+        transform: translateX(2px);
+    }
+
+    .yt-playlist-item .title {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.95em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .yt-playlist-item .meta {
+        color: var(--text-secondary);
+        font-size: 0.85em;
+    }
+
+    .yt-add-btn {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.9em;
+    }
+
+}
+
+/* Collapse to single column on small screens */
+@media (max-width: 899px) {
+    #youtube-playlists-panel {
+        position: static;
+        height: auto;
+        padding: 14px 12px;
+        margin-bottom: 18px;
+    }
+
+    .yt-playlists,
+    .yt-playlist-items {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+}
+
+/* Persistent Now Playing Bar */
+.np-queue-panel {
+    position: fixed;
+    right: 12px;
+    bottom: calc(var(--now-playing-height) + 12px);
+    width: 520px;
+    max-width: calc(100% - 48px);
+    max-height: 64vh;
+    background: linear-gradient(180deg, rgba(6,8,14,0.99), rgba(10,12,20,0.995));
+    border-radius: 12px;
+    box-shadow: 0 16px 60px rgba(2,6,23,0.7);
+    overflow: auto;
+    padding: 10px;
+    z-index: 1600;
+    display: block;
+    opacity: 0;
+    transform: translateX(8px) scale(0.98);
+    pointer-events: none;
+    transition: transform 180ms cubic-bezier(.2,.9,.3,1), opacity 160ms ease-in-out;
+    transform-origin: right bottom;
+}
+.np-queue-panel.open {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+}
+.np-queue-header { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.03); margin-bottom:6px; }
+.np-queue-title { font-weight:700; }
+.np-queue-list { padding:6px 4px; display:flex; flex-direction:column; gap:8px; }
+.np-queue-item { display:flex; gap:10px; align-items:flex-start; padding:8px; border-radius:8px; background: rgba(255,255,255,0.02); }
+.np-queue-item img.song-thumbnail { width:56px; height:56px; object-fit:cover; border-radius:6px; flex-shrink:0; }
+.np-queue-item .np-qi-info { display:flex; flex-direction:column; min-width:0; flex: 1 1 auto; }
+.np-qi-title { font-weight:600; white-space:normal; overflow-wrap: anywhere; }
+.np-qi-sub { font-size:12px; color:var(--text-secondary); }
+
+/* Position number for queue items */
+.np-queue-number {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    font-weight: 700;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.now-playing-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Respect iOS/Android safe area insets when present */
+    bottom: env(safe-area-inset-bottom, 0px);
+    height: var(--now-playing-height);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px;
+    background: linear-gradient(180deg, rgba(20, 24, 36, 0.95), rgba(15, 23, 42, 0.98));
+    border-top: 1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 -8px 20px rgba(2,6,23,0.6);
+    z-index: 1400;
+}
+
+.now-playing-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.np-thumb img {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+}
+
+.np-info {
+    min-width: 0;
+}
+
+.np-title {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.np-artist {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.now-playing-bar-center {
+    flex: 1 1 auto;
+    padding: 0 12px;
+}
+
+.np-progress {
+    width: 100%;
+    height: 6px;
+    background: rgba(99,102,241,0.12);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.np-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    width: 0%;
+    transition: width 0.12s linear;
+}
+
+.now-playing-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Smaller control buttons for the bottom bar */
+.now-playing-bar .control-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1em;
+}
+
+/* Ensure the inner icon/text is centered and has a consistent size */
+.now-playing-bar .control-btn > span,
+.now-playing-bar .control-btn > i,
+.now-playing-bar .control-btn img,
+.now-playing-bar .control-btn svg {
+    display: inline-block;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* Scale emoji/text icons to feel like a proper button glyph */
+.now-playing-bar .control-btn > span { font-size: 1.25rem; }
+.now-playing-bar .control-btn.play-pause > span { font-size: 1.45rem; }
+.now-playing-bar .control-btn:not(.play-pause) > span { font-size: 1.15rem; }
+
+/* If icons are images/SVGs, size them consistently */
+.now-playing-bar .control-btn img,
+.now-playing-bar .control-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Play/Pause button drawn with CSS (no emoji images) */
+.control-btn.play-pause { position: relative; }
+.control-btn.play-pause::before {
+    content: '';
+    /* absolutely center the glyph inside the circular button so
+       both play (triangle) and pause (square) share the same origin */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: block;
+    width: 0;
+    height: 0;
+    /* play triangle (drawn with borders) */
+    border-left: 10px solid var(--primary-color);
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    margin: 0; /* clear any offsets */
+    transition: all 140ms ease;
+    pointer-events: none;
+}
+/* Pause state: single centered square */
+.control-btn.play-pause.playing::before {
+    /* convert the centered pseudo-element into a small square */
+    width: 10px;
+    height: 10px;
+    background: var(--primary-color);
+    border-radius: 1px;
+    /* remove triangle borders so only the square is visible */
+    border-left: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    box-sizing: content-box;
+    transition: all 120ms ease;
+}
+
+/* Skip / Next button as CSS triangles */
+.control-btn.skip { position: relative; }
+.control-btn.skip::before,
+.control-btn.skip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: block;
+    width: 0;
+    height: 0;
+    /* triangle facing right */
+    border-left: 10px solid var(--primary-color);
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    pointer-events: none;
+    transition: transform 120ms ease, opacity 120ms ease;
+}
+/* position the pair of triangles centered as a group */
+.control-btn.skip::before { transform: translate(-70%, -50%); opacity: 1; }
+.control-btn.skip::after { transform: translate(-30%, -50%); opacity: 0.95; }
+
+/* Hover/focus states keep consistent visual treatment */
+
+
+@media (max-width: 600px) {
+     /* Keep the progress seeker visible on small screens while making
+         the bar more compact. Hide less-important text like the artist. */
+     .np-artist { display: none; }
+     /* Ensure the center progress area is a flex item so it receives space
+         between the thumbnail and controls on narrow viewports. Keep it
+         compact but with a sensible minimum width so the seeker is visible. */
+     .now-playing-bar-center { display: flex !important; flex: 1 1 auto !important; align-items: center; padding: 0 8px; min-width: 120px; max-width: 60%; }
+    .np-progress { height: 4px; border-radius: 4px; }
+    /* Slightly smaller thumbnail and controls on mobile */
+    .np-thumb img { width: 40px; height: 40px; }
+    .now-playing-bar .control-btn { width: 36px; height: 36px; }
+    .np-title { font-size: 0.95rem; }
+
+     /* Force the bottom bar to remain visible above overlays and ensure
+         it's positioned correctly even if JS measurement ran early. */
+     .now-playing-bar { display: flex !important; bottom: 0 !important; z-index: 2000 !important; min-height: 64px !important; }
+
+    /* Make sure the progress elements are not accidentally hidden by
+       browser quirks — force them visible. */
+    .np-progress, .np-progress-fill { display: block !important; }
+
+    /* Animate expand / collapse via max-height for a smooth mobile UX */
+    .now-playing-bar {
+        /* start collapsed; allow JS to override max-height inline for animation */
+        max-height: var(--now-playing-collapsed, 80px);
+        overflow: hidden;
+        transition: max-height 240ms ease, padding 200ms ease;
+    }
+    .now-playing-bar.expanded {
+        /* On expanded state, JS will set max-height to the measured height
+           and eventually clear it; the CSS rule here provides a fallback. */
+        max-height: 60vh;
+    }
+}
+
+/* Expanded mobile layout for the Now Playing bar when tapped */
+@media (max-width: 600px) {
+    .now-playing-bar.expanded {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        /* Add extra bottom padding to clear OS UI (home indicator) and
+           ensure large controls are not clipped */
+        padding: 12px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 8px));
+        min-height: auto;
+    }
+    .now-playing-bar.expanded .now-playing-bar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .now-playing-bar.expanded .np-thumb img { width: 72px; height: 72px; border-radius: 8px; }
+    .now-playing-bar.expanded .np-info { display: block; }
+    .now-playing-bar.expanded .np-artist { display: block; }
+    .now-playing-bar.expanded .now-playing-bar-center { order: 2; padding: 6px 0; max-width: none; }
+    .now-playing-bar.expanded .now-playing-bar-right { order: 3; align-self: flex-end; }
+    .now-playing-bar.expanded .np-title { white-space: normal; font-size: 1rem; }
+    .now-playing-bar.expanded .np-progress { height: 8px; border-radius: 6px; }
+}
+
+/* Center controls (queue / play / skip) in expanded mobile view */
+@media (max-width: 600px) {
+    .now-playing-bar.expanded .now-playing-bar-right {
+        order: 3;
+        align-self: center;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        gap: 12px;
+        padding-top: 6px;
+    }
+    .now-playing-bar.expanded .now-playing-bar-right .control-btn {
+        width: 48px;
+        height: 48px;
+    }
+    .now-playing-bar.expanded .now-playing-bar-right .control-btn.play-pause::before {
+        /* slightly larger play triangle */
+        border-left-width: 12px;
+        border-top-width: 8px;
+        border-bottom-width: 8px;
+    }
+    .now-playing-bar.expanded .now-playing-bar-right .control-btn.skip::before,
+    .now-playing-bar.expanded .now-playing-bar-right .control-btn.skip::after {
+        border-left-width: 12px;
+        border-top-width: 8px;
+        border-bottom-width: 8px;
+    }
+}

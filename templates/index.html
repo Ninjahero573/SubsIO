@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JukeboxLED - Add Your Music!</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>🎵 JukeboxLED 💡</h1>
+                <p class="subtitle">Add songs and watch the light show (No light show for now!)</p>
+            </div>
+            <div class="header-controls">
+                <!-- kept for layout; button moved under header-left for visual placement -->
+            </div>
+        </header>
+
+        <!-- Bento menu: quick actions including YouTube sign-in -->
+        <div class="bento-grid" role="list" aria-label="Quick actions">
+            <button class="bento-item" id="bento-search" type="button" role="listitem" aria-label="Search or add a song">
+                <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6zM9.5 14A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
+                </svg>
+                <div class="bento-label">Search / Add</div>
+            </button>
+
+            <button class="bento-item youtube-login-btn" id="youtube-login-btn" role="listitem" aria-label="Sign in with YouTube" title="Sign in with YouTube">
+                <img class="youtube-img" src="/images/youtube.jpg" alt="YouTube">
+            </button>
+
+            <a class="bento-item spotify-link" href="https://open.spotify.com" target="_blank" rel="noopener" role="listitem" aria-label="Open Spotify">
+                <!-- Use shipped image asset for Spotify logo -->
+                <img class="spotify-img" src="/images/spotify.jpg" alt="Spotify" />
+            </a>
+
+            <a class="bento-item" href="https://soundcloud.com" target="_blank" rel="noopener" role="listitem" aria-label="Open SoundCloud">
+                <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M6.5 15.5c-.3 0-.5-.3-.5-.6 0-.3.2-.5.5-.5.7 0 1.4.2 1.9.6.1.1 0 .3-.1.3-.5.1-1.1.2-1.8.2zM3 12.5c0-.3.2-.6.5-.6.3 0 .5.2.5.5 0 .3-.2.6-.5.6-.3 0-.5-.3-.5-.5zM2 10c0-.3.2-.6.5-.6.3 0 .5.2.5.5 0 .3-.2.6-.5.6C2.2 10.5 2 10.3 2 10zM4 8.5c0-.3.2-.6.5-.6.3 0 .5.2.5.5 0 .3-.2.6-.5.6-.3 0-.5-.3-.5-.5zM20 14c-.1 0-.2 0-.3.1-.9-1.3-2.7-2.1-4.6-2.1-1.1 0-2.2.3-3.1.9-.1 0-.2.1-.3.1-1.1 0-2 .8-2 1.9v.6h11c1.4 0 2.5-1.2 2.5-2.5S21.4 12.5 20 12.5c-.2 0-.3 0-.4.1z"/>
+                </svg>
+                <div class="bento-label">SoundCloud</div>
+            </a>
+        </div>
+
+        <main>
+            <!-- YouTube Playlists Panel -->
+            <section id="youtube-playlists-panel" class="youtube-panel">
+                <div class="yt-column">
+                    <h3>Your Playlists</h3>
+                    <div id="yt-playlists" class="yt-playlists">
+                        <div class="empty-state"><p>Sign in to YouTube to view playlists.</p></div>
+                    </div>
+                </div>
+                <div class="yt-column">
+                    <h3>Playlist Items</h3>
+                    <div id="yt-playlist-items" class="yt-playlist-items">
+                        <div class="empty-state"><p>Select a playlist to see songs.</p></div>
+                    </div>
+                </div>
+            </section>
+            <!-- Add Song Section -->
+            <section class="add-song-section">
+                <h2>Add a Song (YouTube only right now)</h2>
+                <form id="add-song-form">
+                    <div class="form-group">
+                        <input 
+                            type="text" 
+                            id="song-or-search" 
+                            placeholder="Paste YouTube URL or enter a search term..."
+                        >
+                        <div id="link-results" class="search-results"></div>
+                        <div id="search-status" class="search-status"></div>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+                    <div class="form-group">
+                        <input 
+                            type="text" 
+                            id="added-by" 
+                            placeholder="Your name (optional)"
+                            maxlength="50"
+                        >
+                    </div>
+                    <div class="form-group user-settings">
+                        <span id="current-user" class="user-pill">Name: <strong>Anonymous</strong></span>
+                        <button type="button" id="change-name-btn" class="link-btn" aria-label="Edit name">✎</button>
+                        <button type="button" id="clear-name-btn" class="link-btn" aria-label="Clear name">✖</button>
+                        
+                    </div>
+                    <button type="submit" id="add-btn" class="primary-btn">
+                        <span>🔍</span> Search
+                    </button>
+                </form>
+                <div id="message" class="message"></div>
+            </section>
+            
+            <!-- Search & Browse Section (no longer used for input/results) -->
+
+            <!-- Now Playing (moved to fixed bottom bar) -->
+            <!-- (Replaced by a compact persistent bar rendered at the bottom of the page) -->
+
+            <!-- Queue is now available from the persistent bottom bar (expandable) -->
+
+            <!-- LED Status (temporarily disabled; keep markup for future use)
+            <section class="led-status-section">
+                <h2>Arduino Due LED Status</h2>
+                <div class="led-strips">
+                    <div class="led-strip">
+                        <div class="led-strip-header">Strip 1 (150 LEDs)</div>
+                        <div class="led-bar" id="led-strip-0"></div>
+                    </div>
+                    <div class="led-strip">
+                        <div class="led-strip-header">Strip 2 (300 LEDs)</div>
+                        <div class="led-bar" id="led-strip-1"></div>
+                    </div>
+                    <div class="led-strip">
+                        <div class="led-strip-header">Strip 3 (300 LEDs)</div>
+                        <div class="led-bar" id="led-strip-2"></div>
+                    </div>
+                    <div class="led-strip">
+                        <div class="led-strip-header">Strip 4 (300 LEDs)</div>
+                        <div class="led-bar" id="led-strip-3"></div>
+                    </div>
+                </div>
+            </section>
+            -->
+        </main>
+
+        <footer>
+            <p>🎸 JukeboxLED - Music Visualizer with WS2812B LED Strips 🎸</p>
+            <p class="connection-status">
+                Status: <span id="connection-status">Connecting...</span>
+            </p>
+        </footer>
+    </div>
+
+        <!-- Persistent Now Playing bar -->
+        <div id="now-playing-bar" class="now-playing-bar">
+            <div id="now-playing" class="now-playing-bar-left">
+                <div class="np-thumb" id="np-thumb">
+                    <img src="" alt="thumb" id="np-thumb-img" style="display:none;">
+                </div>
+                <div class="np-info">
+                    <div id="np-title" class="np-title">No song currently playing</div>
+                    <div id="np-artist" class="np-artist"></div>
+                </div>
+            </div>
+            <div class="now-playing-bar-center">
+                <div class="np-progress" id="np-progress">
+                    <div class="np-progress-fill" id="np-progress-fill" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="now-playing-bar-right">
+                <button id="np-toggle-queue-btn" class="control-btn" title="Show queue" aria-expanded="false">☰</button>
+                <button id="play-pause-btn" class="control-btn play-pause" title="Play/Pause" aria-pressed="false"></button>
+                <button id="skip-next-btn" class="control-btn skip" title="Next"></button>
+            </div>
+        </div>
+
+        <!-- Expandable queue panel that appears above the bottom bar -->
+        <div id="np-queue-panel" class="np-queue-panel" aria-hidden="true">
+            <div class="np-queue-header">
+                <div class="np-queue-title">Up Next (<span id="queue-count">0</span>)</div>
+                <button id="np-close-queue-btn" class="link-btn" title="Close">✕</button>
+            </div>
+            <div id="np-queue-list" class="np-queue-list">
+                <!-- Populated dynamically with the current queue -->
+            </div>
+        </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
