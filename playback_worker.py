@@ -492,16 +492,33 @@ def prefetch_queue_worker(
 
                     queue_manager.ensure_downloaded(song, progress_callback=_pf_cb)
                     try:
-                        song['status'] = 'buffering'
-                        song['progress'] = 100
-                        song['stage'] = 'buffering'
+                        # Decide whether this downloaded item is the immediate
+                        # next in queue (prepare label) or just a downloaded
+                        # item sitting in the queue. Query the current queue
+                        # to make this decision robust to reordering/removals.
+                        state = queue_manager.get_queue()
+                        upcoming = state.get('queue') or []
+                        # Find the position of this song in the current queue
+                        pos = next((i for i, s in enumerate(upcoming) if s.get('id') == song_id), None)
+                        if pos == 0:
+                            # Immediate next: preparing
+                            song['status'] = 'buffering'
+                            song['progress'] = 100
+                            song['stage'] = 'buffering'
+                            emit_stage = 'buffering'
+                        else:
+                            # Downloaded and waiting in queue
+                            song['status'] = 'downloaded'
+                            song['progress'] = 100
+                            song['stage'] = 'downloaded'
+                            emit_stage = 'downloaded'
                     except Exception:
                         pass
                     socketio.emit(
                         "song_progress",
                         {
                             "song_id": song_id,
-                            "stage": "buffering",
+                            "stage": emit_stage,
                             "progress": 100,
                         },
                     )

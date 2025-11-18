@@ -16,6 +16,9 @@ let nowPlayingDiv;
 let queueDiv;
 let queueCountSpan;
 let connectionStatus;
+let connectionIndicator;
+let indicatorDot;
+let connectionText;
 let currentUserSpan;
 let changeNameBtn;
 let clearNameBtn;
@@ -55,6 +58,9 @@ function initializeDOMElements() {
     queueDiv = document.getElementById('queue');
     queueCountSpan = document.getElementById('queue-count');
     connectionStatus = document.getElementById('connection-status');
+    connectionIndicator = document.getElementById('connection-indicator');
+    indicatorDot = connectionIndicator ? connectionIndicator.querySelector('.indicator-dot') : null;
+    connectionText = document.getElementById('connection-text');
     currentUserSpan = document.getElementById('current-user');
     changeNameBtn = document.getElementById('change-name-btn');
     clearNameBtn = document.getElementById('clear-name-btn');
@@ -87,6 +93,25 @@ function initializeDOMElements() {
         return false;
     }
     return true;
+}
+
+// Helper to prevent double-clicking add buttons while an add request is in-flight
+function startAdding(btn) {
+    if (!btn) return false;
+    if (btn.dataset.adding === '1') return false; // already in progress
+    btn.dataset.adding = '1';
+    try { btn.disabled = true; } catch (e) {}
+    btn.classList.add('adding');
+    btn.setAttribute('aria-busy', 'true');
+    return true;
+}
+
+function finishAdding(btn) {
+    if (!btn) return;
+    delete btn.dataset.adding;
+    try { btn.disabled = false; } catch (e) {}
+    btn.classList.remove('adding');
+    btn.removeAttribute('aria-busy');
 }
 
 // Initialize Socket.IO
@@ -170,6 +195,13 @@ function updateNowPlaying(song) {
 
         if (titleEl) titleEl.textContent = song.title || 'Unknown';
         if (artistEl) artistEl.textContent = song.artist || '';
+        // Render artist and who added inline to keep the bottom bar compact
+        if (artistEl) {
+            const artistHtml = escapeHtml(song.artist || '');
+            const addedByHtml = song.added_by ? ` • <span class="np-added-by-inline">Added by ${escapeHtml(song.added_by)}</span>` : '';
+            // We escape values above; using innerHTML here is safe for those escaped parts
+            artistEl.innerHTML = artistHtml + addedByHtml;
+        }
         if (thumbImg) {
             if (song.thumbnail) {
                 thumbImg.src = song.thumbnail;
@@ -316,7 +348,7 @@ function updateNPQueuePanel(queue) {
                 ${thumb}
                 <div class="np-qi-info">
                     <div class="np-qi-title">${title}</div>
-                    <div class="np-qi-sub">${artist} • ${formatDuration(song.duration || 0)}</div>
+                    <div class="np-qi-sub">${artist} • ${formatDuration(song.duration || 0)}${song.added_by ? ` • Added by ${escapeHtml(song.added_by)}` : ''}</div>
                     <div class="song-progress" id="np-song-progress-${song.id}" style="display:block;margin-top:6px;">
                         <div class="progress-label">
                             <span class="progress-stage">${escapeHtml(stageLabel)}</span>
@@ -407,6 +439,7 @@ function stageLabelFor(stage) {
     const stageEmoji = {
         'downloading': '⬇️ Downloading audio',
         'buffering': '📦 Preparing next up',
+        'downloaded': '✅ Downloaded, in queue',
         'playing': '🎵 Now playing',
         'analyzing': '🔍 Analyzing',
         'generating': '✨ Generating Light Show',
@@ -791,10 +824,11 @@ async function loadYouTubePlaylistItems(playlistId) {
         // Wire add handlers
         ytPlaylistItemsDiv.querySelectorAll('.add-yt-video').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                // Prevent duplicate clicks for this button
+                if (!startAdding(btn)) return;
                 const vid = btn.getAttribute('data-video-id');
                 const url = `https://www.youtube.com/watch?v=${vid}`;
                 const addedBy = (addedByInput && addedByInput.value.trim()) || 'YouTube';
-                btn.disabled = true;
                 try {
                     const respAdd = await fetch('/api/add_song', {
                         method: 'POST',
@@ -809,7 +843,7 @@ async function loadYouTubePlaylistItems(playlistId) {
                     console.error('Error adding video:', err);
                     showMessage('Failed to add video to queue', 'error');
                 } finally {
-                    btn.disabled = false;
+                    finishAdding(btn);
                 }
             });
         });
@@ -878,9 +912,10 @@ function setupSearchHandlers() {
             // Wire up add buttons just for new nodes
             searchResultsDiv.querySelectorAll('.add-from-search').forEach(btn => {
                 btn.addEventListener('click', async () => {
+                    // Prevent duplicate clicks
+                    if (!startAdding(btn)) return;
                     const url = btn.getAttribute('data-url');
                     const addedBy = (addedByInput && addedByInput.value.trim()) || 'Anonymous';
-                    btn.disabled = true;
 
                     try {
                         const respAdd = await fetch('/api/add_song', {
@@ -898,7 +933,7 @@ function setupSearchHandlers() {
                         console.error('Error adding from search:', err);
                         showMessage('Failed to add song from search.', 'error');
                     } finally {
-                        btn.disabled = false;
+                        finishAdding(btn);
                     }
                 });
             });
@@ -944,15 +979,47 @@ function setupSearchHandlers() {
 function setupSocketHandlers() {
     socket.on('connect', () => {
         console.log('Connected to server');
-        connectionStatus.textContent = 'Connected';
-        connectionStatus.className = 'connected';
+        if (connectionStatus) {
+            connectionStatus.textContent = 'Connected';
+            connectionStatus.className = 'connected';
+        }
+        if (indicatorDot) {
+            indicatorDot.classList.remove('disconnected', 'connecting');
+            indicatorDot.classList.add('connected');
+            indicatorDot.setAttribute('aria-hidden', 'false');
+        }
+        if (connectionText) {
+            connectionText.textContent = 'Connected';
+            connectionText.classList.remove('disconnected', 'connecting');
+            connectionText.classList.add('connected');
+        }
+        if (connectionIndicator) {
+            connectionIndicator.classList.remove('disconnected', 'connecting');
+            connectionIndicator.classList.add('connected');
+        }
         loadQueue();
     });
 
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
-        connectionStatus.textContent = 'Disconnected';
-        connectionStatus.className = 'disconnected';
+        if (connectionStatus) {
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'disconnected';
+        }
+        if (indicatorDot) {
+            indicatorDot.classList.remove('connected', 'connecting');
+            indicatorDot.classList.add('disconnected');
+            indicatorDot.setAttribute('aria-hidden', 'true');
+        }
+        if (connectionText) {
+            connectionText.textContent = 'Disconnected';
+            connectionText.classList.remove('connected', 'connecting');
+            connectionText.classList.add('disconnected');
+        }
+        if (connectionIndicator) {
+            connectionIndicator.classList.remove('connected', 'connecting');
+            connectionIndicator.classList.add('disconnected');
+        }
     });
 
     socket.on('queue_updated', (data) => {
@@ -1182,7 +1249,7 @@ function setupFormHandler() {
 
         // If a URL is provided, show a link preview card under the input
         if (url) {
-            if (linkResultsDiv) {
+                if (linkResultsDiv) {
                 // Simple preview card: show URL and an Add button
                 linkResultsDiv.innerHTML = `
                     <div class="search-result">
@@ -1200,7 +1267,8 @@ function setupFormHandler() {
                 const addBtn = linkResultsDiv.querySelector('.add-from-link');
                 if (addBtn) {
                     addBtn.addEventListener('click', async () => {
-                        addBtn.disabled = true;
+                        // Prevent duplicate clicks
+                        if (!startAdding(addBtn)) return;
                         try {
                             const response = await fetch('/api/add_song', {
                                 method: 'POST',
@@ -1221,7 +1289,7 @@ function setupFormHandler() {
                             console.error('Error adding link song:', err);
                             showMessage('Failed to add song. Please try again.', 'error');
                         } finally {
-                            addBtn.disabled = false;
+                            finishAdding(addBtn);
                         }
                     });
                 }

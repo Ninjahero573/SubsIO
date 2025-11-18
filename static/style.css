@@ -56,6 +56,7 @@
     --primary-color: #6366f1;
     --secondary-color: #8b5cf6;
     --success-color: #10b981;
+    --connecting-color: #f59e0b; /* amber for connecting */
     --error-color: #ef4444;
     --bg-dark: #0f172a;
     --bg-card: #1e293b;
@@ -81,37 +82,47 @@ body {
     background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
     color: var(--text-primary);
     min-height: 100vh;
-    padding: 20px;
+    /* remove left/right padding so content can expand full-width; keep small vertical padding */
+    padding: 20px 0;
     /* leave space at bottom for the persistent now-playing bar and optional queue panel */
     padding-bottom: calc(var(--now-playing-height) + var(--np-panel-height, 0px) + 32px);
 }
 
 .container {
-    max-width: 1320px;
-    margin: 0 auto;
+    /* Expand to the full viewport width while keeping a small internal gutter */
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 16px;
 }
 
+
+
 header {
-    margin-bottom: 28px;
-    padding: 18px 24px;
+    position: relative;
+    margin-bottom: 18px;
+    padding: 10px 16px;
     background: var(--bg-card);
-    border-radius: 18px;
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.65);
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.6);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    justify-content: center; /* center the title block */
+    gap: 12px;
+    /* make header visually match other card-like sections */
+    border: 1px solid var(--border-color);
 }
 
 .header-left {
-    flex: 1 1 auto;
+    flex: none;
     text-align: center;
 }
 
 h1 {
     text-align: center;
-    font-size: 3em;
-    margin-bottom: 10px;
+    font-size: 2.4em;
+    line-height: 1.05;
+    margin-bottom: 6px;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -121,23 +132,8 @@ h1 {
 .subtitle {
     text-align: center;
     color: var(--text-secondary);
-    font-size: 1.2em;
-}
-
- main {
-     display: grid;
-     gap: 20px;
-     grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr);
-     max-width: 1320px; /* match container/header */
-     margin: 0 auto;
-     align-items: start;
- }
-
-section {
-    background: var(--bg-card);
-    padding: 22px 20px;
-    border-radius: 16px;
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.55);
+    font-size: 1em;
+    margin-top: 2px;
 }
 
 h2 {
@@ -155,7 +151,16 @@ h2, h3 {
 
 /* Add Song Form */
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
+}
+
+/* Collapse empty helper blocks under the search input so they don't
+   reserve vertical space when not in use (prevents large gaps between
+   the search bar and the "added by" input). */
+#link-results:empty,
+#search-status:empty,
+#search-results:empty {
+    display: none;
 }
 
 /* User name small controls (sleek) */
@@ -178,6 +183,188 @@ h2, h3 {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+/* When the connection status is placed in the header, keep it compact and aligned */
+.header-controls .connection-status {
+    margin: 0;
+    font-size: 0.95em;
+    color: var(--text-secondary);
+}
+
+/* Accessibility helper for screen-reader-only text */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Position header controls on the right for larger screens */
+@media (min-width: 901px) {
+    .header-controls {
+        position: fixed;
+        right: 20px;
+        top: 20px;
+        z-index: 1200;
+        background: transparent;
+    }
+}
+
+/* Hamburger menu button in header (left side, vertically centered) */
+/* Connection indicator placed where the hamburger used to be */
+.connection-indicator {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1300;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Pill wrapper around the dot + text for a clean status badge */
+.connection-indicator {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.02);
+    border: 5px solid rgba(255,255,255,0.04);
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+}
+
+.connection-indicator.connected {
+    border-color: rgba(16,185,129,0.18);
+    box-shadow: 0 8px 22px rgba(16,185,129,0.06);
+}
+
+.connection-indicator.disconnected {
+    border-color: rgba(239,68,68,0.12);
+    box-shadow: 0 8px 22px rgba(239,68,68,0.04);
+}
+
+.connection-indicator.connecting {
+    border-color: rgba(245,158,11,0.12);
+    box-shadow: 0 8px 18px rgba(245,158,11,0.04);
+}
+
+.connection-indicator .indicator-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #778299; /* default neutral */
+    box-shadow: 0 4px 12px rgba(2,6,23,0.45);
+    transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, opacity 180ms ease;
+}
+
+/* Connected state: green with a subtle pulse */
+.connection-indicator .indicator-dot.connected {
+    background: var(--success-color);
+    box-shadow: 0 8px 20px rgba(16,185,129,0.18);
+    animation: indicatorPulse 1400ms infinite;
+}
+
+/* Disconnected state: red blink */
+.connection-indicator .indicator-dot.disconnected {
+    background: var(--error-color);
+    box-shadow: 0 6px 18px rgba(239,68,68,0.12);
+    animation: indicatorBlink 1200ms infinite;
+}
+
+/* Connecting state: amber/yellow subtle pulse */
+.connection-indicator .indicator-dot.connecting {
+    background: var(--connecting-color);
+    box-shadow: 0 8px 18px rgba(245,158,11,0.14);
+    animation: indicatorPulse 1100ms infinite;
+}
+
+@keyframes indicatorPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.9; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes indicatorBlink {
+    0% { opacity: 1; transform: scale(1); }
+    30% { opacity: 0.35; transform: scale(0.9); }
+    60% { opacity: 1; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Text label next to the indicator dot */
+.connection-text {
+    margin-left: 2px; /* bring text very close to the dot (2px gap) */
+    font-size: 0.95em;
+    color: var(--text-secondary);
+    transition: color 180ms ease, transform 220ms ease, opacity 180ms ease;
+    opacity: 0.95;
+    font-weight: 600;
+}
+
+.connection-text.connected {
+    color: var(--success-color);
+    /* Remove vertical bounce on connected label; keep subtle color cue */
+    animation: none !important;
+}
+
+.connection-text.disconnected {
+    color: var(--error-color);
+    animation: textBlink 1200ms infinite;
+}
+
+/* Connecting text style */
+.connection-text.connecting {
+    color: var(--connecting-color);
+    /* Remove vertical bounce while connecting; keep color cue */
+    animation: none !important;
+}
+
+@keyframes textPulse {
+    0% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(-2px); opacity: 0.95; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes textBlink {
+    0% { opacity: 1; transform: translateY(0); }
+    30% { opacity: 0.45; transform: translateY(0); }
+    60% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile: reduce header title size and tighten spacing so hamburger fits */
+@media (max-width: 600px) {
+    header {
+        padding: 8px 10px;
+        margin-bottom: 12px;
+    }
+
+    /* Make the title smaller and more compact on mobile */
+    .header-left h1,
+    header h1 {
+        font-size: 1.25rem;
+        line-height: 1.05;
+        margin-bottom: 2px;
+    }
+
+    .header-left .subtitle,
+    header .subtitle {
+        font-size: 0.9rem;
+        margin-top: 0;
+        display: none; /* hide subtitle on very small screens for space */
+    }
+
+    .hamburger-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.15rem;
+    }
 }
 
 /* YouTube logo button placed below the header title */
@@ -230,25 +417,43 @@ h2, h3 {
 /* Bento menu styles */
 .bento-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
+    /* Force a 2x2 layout on wide screens so the left-half shows a
+       compact panel of four larger buttons. Each cell fills the row
+       height; the overall grid height is sized to fit two rows. */
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 180px;
+    gap: 16px;
+    padding: 12px; /* inset content from the card border so tiles don't touch edge */
     margin: 14px 0;
+    width: calc(50% - 16px);
+    min-width: 360px;
+    /* two rows plus gap, plus padding — adjusted so tiles don't overflow the bottom border */
+    height: calc((180px * 2) + 16px + 24px);
+    overflow: hidden; /* clip any accidental overflow so tiles don't visually escape the rounded card */
+
+    /* make the bento container look like a card to match other sections */
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.55);
 }
 
 .bento-item {
     background: var(--bg-input);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 14px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
     color: var(--text-primary);
-    min-height: 96px;
+    /* Let the grid cell define the height so items are uniform */
+    min-height: 0;
+    height: 100%;
 }
 
 .bento-item:focus,
@@ -258,21 +463,22 @@ h2, h3 {
 }
 
 .bento-icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     color: var(--primary-color);
 }
 
 .bento-label {
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
     text-align: center;
     color: var(--text-primary);
+    line-height: 1.1;
 }
 
 /* Make sure svg youtube-logo inside the tile scales neatly */
 .bento-item .youtube-logo {
-    width: 56px;
+    width: 48px;
     height: 36px;
 }
 
@@ -282,11 +488,12 @@ h2, h3 {
     border: none;
     color: #fff;
     position: relative;
-    padding: 0; /* allow image to fill tile */
-    min-height: 96px;
+    /* remove the internal padding so the image can fill the whole cell */
+    padding: 0;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    border-radius: 12px;
 }
 
 /* Spotify tile: green logo-only clickable tile */
@@ -297,27 +504,26 @@ h2, h3 {
     position: relative;
     /* remove internal padding so the image can fill the whole tile */
     padding: 0;
-    min-height: 96px;
     align-items: center;
     justify-content: center;
     overflow: hidden; /* ensure the image doesn't overflow rounded corners */
+    border-radius: 12px;
 }
 
 .bento-item.spotify-link .spotify-logo,
 .bento-item.spotify-link .bento-icon {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     display: block;
 }
 
-/* When using the shipped bitmap, size and center it inside the tile */
 .bento-item.spotify-link .spotify-img,
 .bento-item.spotify-link img.spotify-img {
     width: 100%;
     height: 100%;
     object-fit: cover; /* fill the tile while preserving aspect */
     display: block;
-    border-radius: 12px; /* match tile rounding */
+    border-radius: inherit; /* match tile rounding */
 }
 
 /* YouTube image sizing inside the tile (fill the whole tile) */
@@ -327,7 +533,7 @@ h2, h3 {
     height: 100%;
     object-fit: cover;
     display: block;
-    border-radius: 12px; /* match tile rounding */
+    border-radius: inherit; /* match tile rounding */
 }
 
 /* Ensure the SVG path is rendered crisp and filled white regardless of inline attributes */
@@ -380,9 +586,18 @@ h2, h3 {
 @media (max-width: 600px) {
     header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center; /* center header content on narrow screens */
+        justify-content: center; /* vertically center children inside the header */
         gap: 10px;
     }
+
+    .header-left {
+        width: 100%;
+        text-align: center; /* ensure title and subtitle are centered */
+    }
+
+    /* Remove extra bottom spacing on the title so it sits centered vertically */
+    header h1 { margin-bottom: 0; }
 
     .header-controls {
         width: 100%;
@@ -896,11 +1111,19 @@ footer {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     h1 {
         font-size: 2em;
     }
     
+    /* On narrower screens, allow the bento to expand and become responsive */
+    .bento-grid {
+        width: 100%;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        grid-auto-rows: auto;
+        height: auto;
+    }
+
     main {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -910,62 +1133,90 @@ footer {
     }
 }
 
-.search-results {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 15px;
+/* On medium and small screens, allow the bento to expand full width */
+@media (max-width: 900px) {
+    .bento-grid {
+        width: 100%;
+    }
 }
 
+/* Search results layout: use a responsive grid that adapts columns to screen width */
+/* (Old flex-based rules removed to avoid conflicting width behavior.) */
+
+/* Search results layout: use a responsive grid that adapts columns to screen width */
+.search-results {
+    display: grid;
+    gap: 15px;
+    margin-top: 15px;
+    /* Use a larger min column width so items aren't rendered extremely narrow */
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+@media (max-width: 900px) {
+    .search-results {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .search-results {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+}
+
+/* Animate individual result cards when inserted */
 .search-result {
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+    animation: fadeUp 260ms cubic-bezier(.2,.9,.3,1) forwards;
     background: var(--bg-input);
     border-radius: 10px;
     padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    width: 100%;
+    /* Let grid control the width; ensure a sensible min-height so very narrow columns
+       don't produce extremely tall boxes */
+    min-height: 80px;
 }
 
-.search-result .song-info {
-    flex: 1;
-}
-
-/* On medium screens, two per row */
-@media (min-width: 600px) {
-    .search-result {
-        width: calc(50% - 15px);
+@keyframes fadeUp {
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
-/* On larger screens, three per row */
-@media (min-width: 900px) {
-    .search-result {
-        width: calc(33.333% - 15px);
-    }
+/* Stagger appearance slightly for multiple results */
+.search-results .search-result:nth-child(1) { animation-delay: 0ms; }
+.search-results .search-result:nth-child(2) { animation-delay: 40ms; }
+.search-results .search-result:nth-child(3) { animation-delay: 80ms; }
+.search-results .search-result:nth-child(4) { animation-delay: 120ms; }
+.search-results .search-result:nth-child(5) { animation-delay: 160ms; }
+.search-results .search-result:nth-child(6) { animation-delay: 200ms; }
+
+/* Smooth show/hide for helper blocks (status / link-results) */
+#search-status, #link-results, #search-results {
+    transition: opacity 180ms ease, max-height 220ms ease, margin-top 180ms ease;
+    overflow: hidden;
+    opacity: 0;
+    max-height: 0;
 }
 
-/* Search results layout */
-.search-results {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 15px;
+/* When populated, allow these containers to expand */
+#search-status:not(:empty),
+#link-results:not(:empty),
+#search-results:not(:empty) {
+    opacity: 1;
+    /* Allow the search results area to expand taller so multiple rows
+       are visible rather than clipped. Keep a large max-height to
+       preserve the smooth transition while avoiding hard clipping. */
+    max-height: 2000px;
+    margin-top: 8px;
+    overflow: visible;
 }
 
-.search-result {
-    background: var(--bg-input);
-    border-radius: 10px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-}
-
-.search-result .song-info {
-    flex: 1;
-}
+/* .search-result and .song-info are defined above (consolidated) */
 
 .search-more-btn {
     margin-top: 10px;
@@ -985,18 +1236,58 @@ footer {
     background: rgba(99, 102, 241, 0.15);
 }
 
-/* On medium screens, two search cards per row */
-@media (min-width: 600px) {
-    .search-result {
-        width: calc(50% - 15px);
-    }
+/* Removed legacy .search-result fixed-width media queries so the
+   responsive grid (`.search-results`) controls column sizing. */
+
+/* Ensure thumbnails inside search cards don't force excessive height */
+.search-result img,
+.search-result .song-thumbnail {
+    max-height: 160px;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 8px;
 }
 
-/* On large screens, three search cards per row */
-@media (min-width: 900px) {
-    .search-result {
-        width: calc(33.333% - 15px);
-    }
+/* Add buttons in search results and playlist items should match the
+   progress bar / slider gradient for consistent visual language. */
+.search-result .add-from-search,
+.search-result .add-from-link,
+.yt-playlist-item .add-yt-video {
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 20px rgba(99,102,241,0.12);
+    transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.search-result .add-from-search:hover,
+.search-result .add-from-link:hover,
+.yt-playlist-item .add-yt-video:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(99,102,241,0.18);
+}
+
+.search-result .add-from-search:disabled,
+.search-result .add-from-link:disabled,
+.yt-playlist-item .add-yt-video:disabled {
+    opacity: 0.6;
+    cursor: default;
+    transform: none;
+}
+
+/* Visual state while an add request is in-flight */
+button.adding {
+    opacity: 0.7;
+    pointer-events: none;
+    transform: none !important;
 }
 
 /* YouTube Playlists Right Column Layout */
@@ -1051,6 +1342,14 @@ footer {
         padding: 18px 20px; /* consistent card padding */
         width: 100%;
     }
+
+/* Reinstate a visible border for the Add Song card so it stands out */
+.add-song-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.55);
+}
 
     .yt-column {
         display: flex;
@@ -1228,6 +1527,21 @@ footer {
 .np-artist {
     color: var(--text-secondary);
     font-size: 0.9em;
+}
+
+/* Small hint for who added the song in compact now-playing */
+.np-added-by {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* Inline variant used inside the compact now-playing artist line */
+.np-added-by-inline {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin-left: 6px;
+    display: inline;
 }
 
 .now-playing-bar-center {
@@ -1436,3 +1750,5 @@ footer {
         border-bottom-width: 8px;
     }
 }
+
+/* Mobile/header hamburger and sizing tweaks removed; original responsive behavior retained. */

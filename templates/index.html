@@ -10,16 +10,22 @@
 <body>
     <div class="container">
         <header>
+            <!-- connection indicator (replaces hamburger) -->
+            <div id="connection-indicator" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status">
+                <span class="indicator-dot connecting" aria-hidden="true"></span>
+                <span id="connection-text" class="connection-text connecting">Connecting...</span>
+                <span class="sr-only">Connection status</span>
+            </div>
             <div class="header-left">
                 <h1>🎵 JukeboxLED 💡</h1>
                 <p class="subtitle">Add songs and watch the light show (No light show for now!)</p>
             </div>
             <div class="header-controls">
-                <!-- kept for layout; button moved under header-left for visual placement -->
             </div>
         </header>
 
-        <!-- Add Song Section (moved under header) -->
+
+
         <!-- Top notifications: floating toasts appear here -->
         <div id="top-notifications" class="top-notifications" aria-live="polite" aria-atomic="true"></div>
 
@@ -54,8 +60,9 @@
                     <span>🔍</span> Search
                 </button>
             </form>
-            <!-- inline message removed in favor of top-floating toasts -->
         </section>
+
+
 
         <!-- Bento menu: quick actions including YouTube sign-in -->
         <div class="bento-grid" role="list" aria-label="Quick actions">
@@ -83,6 +90,8 @@
             </button>
         </div>
 
+
+
         <main>
             <!-- YouTube Playlists Panel -->
             <section id="youtube-playlists-panel" class="youtube-panel">
@@ -99,47 +108,10 @@
                     </div>
                 </div>
             </section>
-            <!-- Add Song moved under header -->
-            
-            <!-- Search & Browse Section (no longer used for input/results) -->
-
-            <!-- Now Playing (moved to fixed bottom bar) -->
-            <!-- (Replaced by a compact persistent bar rendered at the bottom of the page) -->
-
-            <!-- Queue is now available from the persistent bottom bar (expandable) -->
-
-            <!-- LED Status (temporarily disabled; keep markup for future use)
-            <section class="led-status-section">
-                <h2>Arduino Due LED Status</h2>
-                <div class="led-strips">
-                    <div class="led-strip">
-                        <div class="led-strip-header">Strip 1 (150 LEDs)</div>
-                        <div class="led-bar" id="led-strip-0"></div>
-                    </div>
-                    <div class="led-strip">
-                        <div class="led-strip-header">Strip 2 (300 LEDs)</div>
-                        <div class="led-bar" id="led-strip-1"></div>
-                    </div>
-                    <div class="led-strip">
-                        <div class="led-strip-header">Strip 3 (300 LEDs)</div>
-                        <div class="led-bar" id="led-strip-2"></div>
-                    </div>
-                    <div class="led-strip">
-                        <div class="led-strip-header">Strip 4 (300 LEDs)</div>
-                        <div class="led-bar" id="led-strip-3"></div>
-                    </div>
-                </div>
-            </section>
-            -->
         </main>
-
-        <footer>
-            <p>🎸 JukeboxLED - Music Visualizer with WS2812B LED Strips 🎸</p>
-            <p class="connection-status">
-                Status: <span id="connection-status">Connecting...</span>
-            </p>
-        </footer>
     </div>
+
+
 
         <!-- Persistent Now Playing bar -->
         <div id="now-playing-bar" class="now-playing-bar">
@@ -164,6 +136,8 @@
             </div>
         </div>
 
+
+
         <!-- Expandable queue panel that appears above the bottom bar -->
         <div id="np-queue-panel" class="np-queue-panel" aria-hidden="true">
             <div class="np-queue-header">
@@ -175,6 +149,7 @@
             </div>
         </div>
 
+        
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

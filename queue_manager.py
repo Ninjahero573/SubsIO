@@ -5,6 +5,8 @@ import os
 import uuid
 import json
 import yt_dlp
+import ssl
+import shutil
 from mutagen import File
 from threading import Lock
 import time
@@ -118,10 +120,41 @@ class QueueManager:
             # Prevent creation of .part temporary files on Windows
             ydl_opts['nopart'] = True
 
+        # Allow overriding ffmpeg/ffprobe location via environment variable(s).
+        # Useful on Windows where ffmpeg may not be on PATH. Set one of:
+        #   FFMPEG_PATH, FFMPEG_LOCATION, or FFMPEG_DIR to the folder
+        # containing the ffmpeg/ffprobe executables.
+        ffmpeg_env = (os.environ.get('FFMPEG_PATH') or os.environ.get('FFMPEG_LOCATION')
+                      or os.environ.get('FFMPEG_DIR'))
+        if ffmpeg_env:
+            # yt-dlp expects the directory containing ffmpeg/ffprobe
+            ydl_opts['ffmpeg_location'] = ffmpeg_env
+
+        # Pre-check whether ffmpeg/ffprobe are available. If not, provide a
+        # clear, actionable error message before yt-dlp's postprocessor runs.
+        ffmpeg_on_path = shutil.which('ffmpeg') is not None
+        ffprobe_on_path = shutil.which('ffprobe') is not None
+        ffmpeg_configured = 'ffmpeg_location' in ydl_opts
+        missing_ffmpeg = not (ffmpeg_on_path and ffprobe_on_path) and not ffmpeg_configured
+
         max_attempts = 5
         last_exc = None
+        tried_certifi = False
+        tried_insecure = False
         for attempt in range(1, max_attempts + 1):
             try:
+                # If we need ffmpeg for postprocessing but it's not available,
+                # raise a helpful error before yt-dlp attempts conversion.
+                if missing_ffmpeg and ydl_opts.get('postprocessors'):
+                    raise RuntimeError(
+                        "ffmpeg/ffprobe not found. Install ffmpeg and ensure "
+                        "its bin directory is on PATH, or set the environment "
+                        "variable FFMPEG_PATH (or FFMPEG_LOCATION) to the folder "
+                        "containing ffmpeg.exe and ffprobe.exe. Example: "
+                        "setx FFMPEG_PATH \"C:\\\\tools\\\\ffmpeg\\\\bin\"\n"
+                        "Or install via winget/choco: 'winget install ffmpeg' or 'choco install ffmpeg'"
+                    )
+
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download([url])
                 last_exc = None
@@ -132,6 +165,37 @@ class QueueManager:
                 # attempt a small backoff and try to remove any stale .part
                 # files that may be blocking the rename.
                 msg = str(e).lower()
+                # Handle SSL certificate verification failures by trying
+                # to point Python at the certifi CA bundle, which resolves
+                # many Windows/embedded env issues where OpenSSL can't find
+                # a local issuer bundle.
+                if (('certificate verify failed' in msg or 'unable to get local issuer' in msg)
+                        or isinstance(e, ssl.SSLError)) and not tried_certifi:
+                    try:
+                        import certifi
+                        os.environ['SSL_CERT_FILE'] = certifi.where()
+                        tried_certifi = True
+                        # retry immediately (loop will continue)
+                        continue
+                    except Exception:
+                        # If certifi isn't available or something else fails,
+                        # fall through to existing handling below.
+                        pass
+                # If we've already tried the certifi bundle and the SSL
+                # error persists, allow a single insecure retry by telling
+                # yt-dlp to skip certificate checks. This is insecure and
+                # should only be used as a last resort when operating in
+                # a locked-down environment where proper CA bundles are
+                # unavailable.
+                if (('certificate verify failed' in msg or 'unable to get local issuer' in msg)
+                        or isinstance(e, ssl.SSLError)) and tried_certifi and not tried_insecure:
+                    try:
+                        ydl_opts['nocheckcertificate'] = True
+                        tried_insecure = True
+                        # retry immediately with insecure option
+                        continue
+                    except Exception:
+                        pass
                 if 'permission' in msg or 'access' in msg or os.name == 'nt':
                     # try to remove any matching .part files (best-effort)
                     try:
