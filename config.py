@@ -9,7 +9,7 @@ Customize your setup here
 
 # Server host and port
 HOST = '0.0.0.0'  # Listen on all network interfaces
-PORT = 5000
+PORT = 80
 
 # Secret key for Flask (change this for production)
 SECRET_KEY = 'jukebox-secret-key-change-this-for-production'
@@ -97,6 +97,14 @@ VERBOSE = True
 # ====================================
 # Advanced Configuration
 # ====================================
+
+# OAuth redirect defaults (change if you host under a different domain)
+# This value is used as a safe default when no `OAUTH_REDIRECT_URI` env var
+# is provided. For public domains Google requires HTTPS for OAuth redirect
+# URIs. If you host at `subsio.us` keep the default below.
+OAUTH_REDIRECT_URI = 'https://subsio.us/auth/youtube/callback'
+# Base host used for generic flow redirects when an explicit redirect isn't set
+OAUTH_REDIRECT_BASE = 'https://subsio.us'
 
 # Frequency ranges for spectrum analysis (Hz)
 FREQ_RANGES = {

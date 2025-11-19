@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JukeboxLED - Add Your Music!</title>
+    <title>SubsIO - Your Music Companion</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
@@ -17,8 +17,8 @@
                 <span class="sr-only">Connection status</span>
             </div>
             <div class="header-left">
-                <h1>🎵 JukeboxLED 💡</h1>
-                <p class="subtitle">Add songs and watch the light show (No light show for now!)</p>
+                <h1>🎵 SubsIO 💡</h1>
+                <p class="subtitle">Queue your favorite songs and enjoy (more to come!)</p>
             </div>
             <div class="header-controls">
             </div>
@@ -64,8 +64,10 @@
 
 
 
-        <!-- Bento menu: quick actions including YouTube sign-in -->
-        <div class="bento-grid" role="list" aria-label="Quick actions">
+        <!-- Bento card: quick actions + playlists grouped together -->
+        <div class="bento-card">
+            <!-- Bento menu: quick actions including YouTube sign-in -->
+            <div class="bento-grid" role="list" aria-label="Quick actions">
             <button class="bento-item" id="bento-search" type="button" role="listitem" aria-label="Search or add a song">
                 <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
                     <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6zM9.5 14A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
@@ -88,12 +90,9 @@
                 </svg>
                 <div class="bento-label">Queue</div>
             </button>
-        </div>
+            </div>
 
-
-
-        <main>
-            <!-- YouTube Playlists Panel -->
+            <!-- YouTube Playlists Panel (grouped with bento) -->
             <section id="youtube-playlists-panel" class="youtube-panel">
                 <div class="yt-column">
                     <h3>Your Playlists</h3>
@@ -108,7 +107,7 @@
                     </div>
                 </div>
             </section>
-        </main>
+        </div>
     </div>
 
 

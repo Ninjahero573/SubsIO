@@ -722,9 +722,26 @@ function setupUsernameHandlers() {
 function setupAuthHandlers() {
     if (!youtubeLoginBtn) return;
 
-    // Clicking the button redirects the browser to the server-side OAuth start
+    // Clicking the button starts login, or signs out if already signed-in
     youtubeLoginBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        if (youtubeLoginBtn.classList.contains('signed-in')) {
+            // Sign out flow: call the logout endpoint and refresh UI
+            try {
+                fetch('/auth/youtube/logout', { method: 'GET' }).then(resp => {
+                    showMessage('Signed out of YouTube', 'success');
+                    // reload UI state
+                    setTimeout(() => window.location.reload(), 300);
+                }).catch(err => {
+                    console.error('Logout failed', err);
+                    showMessage('Sign-out failed', 'error');
+                });
+            } catch (err) {
+                console.error('Logout exception', err);
+                showMessage('Sign-out failed', 'error');
+            }
+            return;
+        }
         // Navigate to start YouTube OAuth flow
         window.location.href = '/auth/youtube/login';
     });
@@ -733,23 +750,31 @@ function setupAuthHandlers() {
     (async function checkAuthStatus() {
         try {
             const resp = await fetch('/api/youtube/playlists');
-            if (resp.ok) {
+                if (resp.ok) {
                     // Signed in: mark the button visually and load playlists
                     youtubeLoginBtn.classList.add('signed-in');
-                    youtubeLoginBtn.disabled = true;
+                    youtubeLoginBtn.disabled = false;
+                    youtubeLoginBtn.title = 'Sign out of YouTube';
                     if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = '';
                     loadYouTubePlaylists();
             } else {
-                // Not signed in - leave button active
+                // Not signed in - leave button active and keep playlists panel visible
                     youtubeLoginBtn.classList.remove('signed-in');
                     youtubeLoginBtn.disabled = false;
-                    if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = 'none';
+                    youtubeLoginBtn.title = 'Sign in with YouTube';
+                    // Keep the playlists panel visible so the user can see the
+                    // sign-in prompt / empty state and understand where playlists
+                    // will appear after signing in.
+                    if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = '';
             }
         } catch (err) {
             // Network or endpoint error - keep login button enabled
                 youtubeLoginBtn.classList.remove('signed-in');
                 youtubeLoginBtn.disabled = false;
-                if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = 'none';
+                // Network or endpoint error - keep the playlists panel visible
+                // so the UI doesn't disappear unexpectedly. The panel will show
+                // the default empty-state or an error message when load is attempted.
+                if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = '';
         }
     })();
 }
@@ -771,18 +796,35 @@ async function loadYouTubePlaylists() {
             ytPlaylistsDiv.innerHTML = '<div class="empty-state"><p>No playlists found.</p></div>';
             return;
         }
-        ytPlaylistsDiv.innerHTML = items.map(p => `
+        // Render playlists as artwork tiles when thumbnail available
+        ytPlaylistsDiv.innerHTML = items.map(p => {
+            // Try common thumbnail fields; fall back to empty string
+            const thumb = p.thumbnail || (p.thumbnails && p.thumbnails[0] && p.thumbnails[0].url) || '';
+            const title = escapeHtml(p.title || 'Playlist');
+            const count = typeof p.count === 'number' ? ` <small>(${p.count})</small>` : '';
+            return `
             <div class="yt-playlist" data-playlist-id="${p.id}">
-                <button class="yt-playlist-btn">${escapeHtml(p.title)} <small>(${p.count})</small></button>
+                <button class="yt-playlist-btn" aria-label="${title}">
+                    ${thumb ? `<img src="${thumb}" alt="${title}" class="yt-playlist-art">` : `<div class="yt-playlist-art placeholder"></div>`}
+                    <div class="yt-playlist-title">${title}${count}</div>
+                </button>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
-        // Wire up click handlers
+        // Wire up click handlers for the artwork buttons
         ytPlaylistsDiv.querySelectorAll('.yt-playlist-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const el = e.currentTarget.closest('.yt-playlist');
                 const pid = el && el.getAttribute('data-playlist-id');
                 if (pid) loadYouTubePlaylistItems(pid);
+            });
+            // Allow keyboard activation via Enter/Space
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    btn.click();
+                }
             });
         });
     } catch (err) {

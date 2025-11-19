@@ -9,9 +9,10 @@ from typing import Optional
 
 import requests
 from flask import render_template, request, jsonify, send_file, send_from_directory, session, redirect, url_for
+from config import OAUTH_REDIRECT_URI as DEFAULT_OAUTH_REDIRECT_URI, OAUTH_REDIRECT_BASE
 
 from . import app, socketio, queue_manager
-from auth.token_store import save_credentials, load_credentials
+from auth.token_store import save_credentials, load_credentials, delete_credentials
 
 # Google OAuth / YouTube availability check (module import may fail in some envs)
 try:
@@ -125,7 +126,7 @@ def _get_client_config():
             "client_secret": os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:5000/auth/youtube/callback')]
+            "redirect_uris": [os.getenv('OAUTH_REDIRECT_URI', DEFAULT_OAUTH_REDIRECT_URI)]
         }
     }
 
@@ -153,9 +154,15 @@ def youtube_login():
     if not ok:
         return jsonify({'error': 'oauth_misconfigured', 'details': msg}), 400
     flow = Flow.from_client_config(cfg, scopes=["https://www.googleapis.com/auth/youtube.readonly"])
-    flow.redirect_uri = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:5000/auth/youtube/callback')
+    flow.redirect_uri = os.getenv('OAUTH_REDIRECT_URI', DEFAULT_OAUTH_REDIRECT_URI)
     auth_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
     session['oauth_state'] = state
+    # Debug info to help diagnose redirect/timeouts (do not log secrets)
+    try:
+        print(f"[OAuth] start: auth_url={auth_url}")
+        print(f"[OAuth] using redirect_uri={flow.redirect_uri}")
+    except Exception:
+        pass
     return redirect(auth_url)
 
 
@@ -169,8 +176,19 @@ def youtube_callback():
     if not ok:
         return jsonify({'error': 'oauth_misconfigured', 'details': msg}), 400
     flow = Flow.from_client_config(cfg, scopes=["https://www.googleapis.com/auth/youtube.readonly"], state=state)
-    flow.redirect_uri = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:5000/auth/youtube/callback')
+    flow.redirect_uri = os.getenv('OAUTH_REDIRECT_URI', DEFAULT_OAUTH_REDIRECT_URI)
     try:
+        # Log incoming callback info for debugging
+        try:
+            print(f"[OAuth] callback invoked: request.url={request.url}")
+            print(f"[OAuth] expected redirect_uri={flow.redirect_uri}")
+            print(f"[OAuth] session_state={state} remote_addr={request.remote_addr}")
+            # show any error param returned by the provider
+            if 'error' in request.args:
+                print(f"[OAuth] provider returned error: {request.args.get('error')}")
+        except Exception:
+            pass
+
         flow.fetch_token(authorization_response=request.url)
     except Exception as e:
         print("⚠ OAuth token exchange failed for YouTube callback:", e)
@@ -227,7 +245,7 @@ def _get_generic_client_config(flow_name: str):
     client_secret = os.getenv(f"{p}_CLIENT_SECRET")
     auth_uri = os.getenv(f"{p}_AUTH_URI")
     token_uri = os.getenv(f"{p}_TOKEN_URI")
-    redirect = os.getenv(f"{p}_REDIRECT_URI", os.getenv('OAUTH_REDIRECT_URI', f'http://localhost:5000/auth/{flow_name}/callback'))
+    redirect = os.getenv(f"{p}_REDIRECT_URI", os.getenv('OAUTH_REDIRECT_URI', f'{OAUTH_REDIRECT_BASE}/auth/{flow_name}/callback'))
     scopes = os.getenv(f"{p}_SCOPES", '')
     if not (client_id and client_secret and auth_uri and token_uri):
         return None
@@ -243,6 +261,34 @@ def _get_generic_client_config(flow_name: str):
         'scopes': scopes_list,
         'redirect': redirect,
     }
+
+
+@app.route('/auth/youtube/logout')
+def youtube_logout():
+    """Sign the current YouTube user out: revoke token (best-effort), delete stored credentials, clear session."""
+    user_id = session.pop('youtube_user_id', None)
+    if user_id:
+        try:
+            creds = load_credentials(user_id)
+        except Exception:
+            creds = None
+
+        # Try to revoke any available token (access or refresh)
+        token = None
+        if creds:
+            token = creds.get('refresh_token') or creds.get('token') or creds.get('access_token')
+        if token:
+            try:
+                requests.post('https://oauth2.googleapis.com/revoke', params={'token': token}, timeout=5)
+            except Exception:
+                pass
+
+        try:
+            delete_credentials(user_id)
+        except Exception:
+            pass
+
+    return redirect(url_for('index'))
 
 
 @app.route('/auth/<flow_name>/login')
@@ -308,6 +354,33 @@ def generic_oauth_callback(flow_name: str):
         session[f'oauth_user_{flow_name}'] = user_id
     except Exception as e:
         print(f"⚠ Failed to save credentials for {flow_name}: {e}")
+
+    return redirect(url_for('index'))
+
+
+@app.route('/auth/<flow_name>/logout')
+def generic_oauth_logout(flow_name: str):
+    """Generic logout for named OAuth flows. Removes stored credentials and clears session."""
+    key = f'oauth_user_{flow_name}'
+    user_id = session.pop(key, None)
+    if user_id:
+        try:
+            creds = load_credentials(user_id)
+        except Exception:
+            creds = None
+
+        token = None
+        if creds:
+            token = creds.get('refresh_token') or creds.get('token') or creds.get('access_token')
+        if token:
+            try:
+                requests.post('https://oauth2.googleapis.com/revoke', params={'token': token}, timeout=5)
+            except Exception:
+                pass
+        try:
+            delete_credentials(user_id)
+        except Exception:
+            pass
 
     return redirect(url_for('index'))
 
@@ -404,7 +477,7 @@ def admin_oauth_config():
     google_cfg = {
         'client_id': mask(os.getenv('GOOGLE_OAUTH_CLIENT_ID')),
         'client_secret': mask(os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')),
-        'redirect': os.getenv('OAUTH_REDIRECT_URI') or 'http://localhost:5000/auth/youtube/callback'
+        'redirect': os.getenv('OAUTH_REDIRECT_URI') or DEFAULT_OAUTH_REDIRECT_URI
     }
 
     env_keys = list(os.environ.keys())
