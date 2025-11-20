@@ -43,10 +43,6 @@ if __name__ == '__main__':
     ensure_dirs()
     start_workers()
 
-    print("Starting JukeboxLED server...")
-    print("Access the jukebox at: http://localhost:5000")
-    print("             or at: http://jukebox.local:5000 (on local network)")
-
     try:
         socketio.run(
             app,

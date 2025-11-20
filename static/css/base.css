@@ -1,0 +1,146 @@
+/* base.css — variables, resets, typographic basics, header */
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #9f5cf6;
+    --success-color: #10b981;
+    --connecting-color: #f59e0b;
+    --error-color: #ef4444;
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --bg-input: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --header-height: 72px;
+    --now-playing-height: 72px;
+    --now-playing-collapsed: 80px;
+    --np-panel-height: 0px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    position: relative;
+    color: var(--text-primary);
+    min-height: 100vh;
+    /* Revert to normal top padding since header is no longer fixed */
+    padding: 0px 0;
+    padding-bottom: calc(var(--now-playing-height) + var(--np-panel-height, 0px) + 32px);
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: -100vh;
+    left: -100vw;
+    width: 300vw;
+    height: 300vh;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-color) 25%, var(--secondary-color) 50%, #1a1a2e 75%, var(--bg-dark) 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 60s ease-in-out infinite;
+    z-index: -1;
+}
+
+.container { width: 100%; max-width: 1500px; margin: 0 auto; padding: 0 16px; }
+
+header {
+    /* Non-persistent top bar: visually similar to now-playing but scrolls with content */
+    position: relative;
+    padding: 10px 0px;
+    background: linear-gradient(180deg, rgba(40, 44, 56, 0.9), rgba(35, 43, 62, 0.95));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 8px 20px rgba(2,6,23,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Make the header full-bleed (span the viewport) while keeping it non-fixed */
+header {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    border-radius: 0; /* remove rounded corners so it reads as a full-width bar */
+}
+
+.header-left { flex: none; text-align: center; }
+
+h1 { text-align: center; font-size: 2.4em; line-height: 1.05; margin-bottom: 6px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.subtitle { text-align: center; color: var(--text-secondary); font-size: 1em; margin-top: 2px; }
+
+h2 { margin-bottom: 20px; color: var(--text-primary); font-size: 1.5em; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }
+h2, h3 { margin-top: 0; }
+
+/* small helpers */
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+/* Connection indicator (status badge shown in header) */
+.connection-indicator {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1300;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.02);
+    border: 5px solid rgba(255,255,255,0.04);
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+}
+
+.connection-indicator.connected {
+    border-color: rgba(16,185,129,0.18);
+    box-shadow: 0 8px 22px rgba(16,185,129,0.06);
+}
+.connection-indicator.disconnected {
+    border-color: rgba(239,68,68,0.12);
+    box-shadow: 0 8px 22px rgba(239,68,68,0.04);
+}
+.connection-indicator.connecting {
+    border-color: rgba(245,158,11,0.12);
+    box-shadow: 0 8px 18px rgba(245,158,11,0.04);
+}
+
+.connection-indicator .indicator-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #778299;
+    box-shadow: 0 4px 12px rgba(2,6,23,0.45);
+    transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, opacity 180ms ease;
+}
+
+.connection-indicator .indicator-dot.connected { background: var(--success-color); box-shadow: 0 8px 20px rgba(16,185,129,0.18); animation: indicatorPulse 1400ms infinite; }
+.connection-indicator .indicator-dot.disconnected { background: var(--error-color); box-shadow: 0 6px 18px rgba(239,68,68,0.12); animation: indicatorBlink 1200ms infinite; }
+.connection-indicator .indicator-dot.connecting { background: var(--connecting-color); box-shadow: 0 8px 18px rgba(245,158,11,0.14); animation: indicatorPulse 1100ms infinite; }
+
+@keyframes indicatorPulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.9; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes indicatorBlink { 0% { opacity: 1; transform: scale(1); } 30% { opacity: 0.35; transform: scale(0.9); } 60% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
+
+.connection-text { margin-left: 2px; font-size: 0.95em; color: var(--text-secondary); transition: color 180ms ease, transform 220ms ease, opacity 180ms ease; opacity: 0.95; font-weight: 600; }
+.connection-text.connected { color: var(--success-color); animation: none !important; }
+.connection-text.disconnected { color: var(--error-color); animation: textBlink 1200ms infinite; }
+.connection-text.connecting { color: var(--connecting-color); animation: none !important; }
+
+@keyframes textPulse { 0% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(-2px); opacity: 0.95; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes textBlink { 0% { opacity: 1; transform: translateY(0); } 30% { opacity: 0.45; transform: translateY(0); } 60% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; transform: translateY(0); } }
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; transform: rotate(0deg); }
+    50% { background-position: 100% 50%; transform: rotate(180deg); }
+    100% { background-position: 0% 50%; transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    header { padding: 8px 10px; margin-bottom: 12px; }
+    .header-left h1, header h1 { font-size: 1.25rem; line-height: 1.05; margin-bottom: 2px; }
+    .header-left .subtitle, header .subtitle { font-size: 0.9rem; margin-top: 0; display: none; }
+    .connection-text { display: none; }
+    .connection-indicator { border: none; left: 8px; }
+}

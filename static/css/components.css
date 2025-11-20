@@ -1,0 +1,174 @@
+/* components.css — buttons, inputs, toasts, messages, search results */
+/* Top floating notifications (compact centered toasts) */
+.top-notifications { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2000; width: calc(100% - 48px); max-width: 920px; display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; }
+.toast { pointer-events: auto; min-width: 280px; max-width: 100%; background: rgba(20,24,36,0.95); color: var(--text-primary); padding: 12px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(2,6,23,0.6); border-left: 4px solid var(--primary-color); display: flex; align-items: center; gap: 12px; animation: toastIn 280ms cubic-bezier(.2,.9,.3,1); }
+.toast .toast-message { flex: 1; }
+.toast .toast-close { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1em; }
+.toast-success { border-left-color: var(--success-color); }
+.toast-error { border-left-color: var(--error-color); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 600px) { .top-notifications { top: 8px; width: calc(100% - 28px); } .toast { border-radius: 10px; padding: 10px 12px; } }
+
+/* Collapse empty helper blocks under the search input so they don't
+   reserve vertical space when not in use (prevents large gaps between
+   the search bar and the "added by" input). */
+#link-results:empty,
+#search-status:empty,
+#search-results:empty {
+	display: none;
+}
+
+/* form and controls */
+.form-group { margin-bottom: 12px; }
+.user-settings { display: flex; align-items: center; gap: 8px; }
+.user-pill { background: rgba(255,255,255,0.03); color: var(--text-primary); padding: 6px 10px; border-radius: 999px; font-size: 0.95em; border: 1px solid rgba(255,255,255,0.04); }
+
+.link-btn { background: transparent; border: none; color: var(--text-secondary); width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; transition: all 0.12s ease; font-size: 0.95em; padding: 0; }
+.link-btn:hover { background: rgba(99,102,241,0.12); color: white; transform: translateY(-1px); }
+.link-btn[aria-label="Clear name"] { color: rgba(239,68,68,0.85); }
+.link-btn[aria-label="Clear name"]:hover { background: rgba(239,68,68,0.12); }
+
+input[type="text"] { width: 100%; padding: 15px; background: var(--bg-input); border: 2px solid var(--border-color); border-radius: 10px; color: var(--text-primary); font-size: 1em; transition: all 0.3s; }
+input[type="text"]:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+
+.primary-btn, button[type="submit"] { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border: none; border-radius: 10px; color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.primary-btn:hover, button[type="submit"]:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); }
+.primary-btn:active, button[type="submit"]:active { transform: translateY(0); }
+
+/* Add Song card visuals (shared card styles) */
+.add-song-section {
+	background: var(--bg-card);
+	border: 1px solid var(--border-color);
+	border-radius: 16px;
+	padding: 18px 16px;
+	box-shadow: 0 14px 30px rgba(15, 23, 42, 0.55);
+	margin-bottom: 18px;
+}
+
+/* Shared media control button styles used by playback controls */
+.control-buttons { display: flex; align-items: center; gap: 15px; justify-content: center; flex-wrap: wrap; }
+
+.control-btn {
+	background: rgba(99, 102, 241, 0.2);
+	border: 1px solid var(--primary-color);
+	color: var(--primary-color);
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	font-size: 1.5em;
+	cursor: pointer;
+	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.control-btn:hover {
+	background: var(--primary-color);
+	color: white;
+	transform: scale(1.1);
+	box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.control-btn:active { transform: scale(0.95); }
+
+.control-btn.play-pause {
+	width: 42px;
+	height: 42px;
+	font-size: 1.1em;
+	background: rgba(99, 102, 241, 0.2);
+	border: 1px solid var(--primary-color);
+	color: var(--primary-color);
+}
+
+.control-btn.play-pause:hover {
+	background: var(--primary-color);
+	color: white;
+	transform: scale(1.08);
+	box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+
+.message { margin-top: 15px; padding: 15px; border-radius: 10px; display: none; animation: slideIn 0.3s; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.message.success { background: rgba(16, 185, 129, 0.2); border: 2px solid var(--success-color); color: var(--success-color); display: block; }
+.message.error { background: rgba(239, 68, 68, 0.2); border: 2px solid var(--error-color); color: var(--error-color); display: block; }
+
+/* Search results */
+.search-results { display: grid; gap: 15px; margin-top: 15px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+@media (max-width: 900px) { .search-results { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
+@media (max-width: 600px) { .search-results { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } }
+
+.search-result { opacity: 0; transform: translateY(6px) scale(0.995); animation: fadeUp 260ms cubic-bezier(.2,.9,.3,1) forwards; background: var(--bg-input); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0) scale(1); } }
+.search-results .search-result:nth-child(1) { animation-delay: 0ms; }
+.search-results .search-result:nth-child(2) { animation-delay: 40ms; }
+.search-results .search-result:nth-child(3) { animation-delay: 80ms; }
+.search-results .search-result:nth-child(4) { animation-delay: 120ms; }
+.search-results .search-result:nth-child(5) { animation-delay: 160ms; }
+.search-results .search-result:nth-child(6) { animation-delay: 200ms; }
+
+/* Use opacity + display for the helper blocks so the surrounding card
+   grows naturally when more results are appended. Avoid max-height
+   clipping which can cause overflowing content during incremental
+   appends. */
+/* Keep helper blocks hidden when empty */
+#search-status, #link-results {
+	transition: opacity 180ms ease, margin-top 180ms ease;
+	opacity: 0;
+	margin-top: 0;
+	display: none;
+}
+#search-status:not(:empty), #link-results:not(:empty) {
+	opacity: 1;
+	display: block;
+	margin-top: 8px;
+}
+
+/* Search results should preserve the grid layout defined by
+   the `.search-results` class. Only toggle visibility and spacing
+   here — do not force `display:block` which collapses the grid. */
+#search-results {
+	transition: opacity 180ms ease, margin-top 180ms ease;
+	opacity: 0;
+	margin-top: 0;
+	display: none; /* hidden when empty */
+}
+#search-results:not(:empty) {
+	opacity: 1;
+	display: grid; /* allow grid columns to apply */
+	margin-top: 8px;
+}
+
+.search-more-btn {
+	margin-top: 12px;
+	padding: 15px;
+	border-radius: 10px;
+	border: none;
+	background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+	color: #fff;
+	cursor: pointer;
+	font-size: 1.05em;
+	display: block;
+	width: 100%;
+	box-shadow: 0 8px 20px rgba(99,102,241,0.12);
+	transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+.search-more-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99,102,241,0.18); }
+.search-more-btn:active { transform: translateY(0); }
+
+/* Disabled / loading state to indicate background fetch in progress */
+.search-more-btn[disabled], .search-more-btn.loading {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none !important;
+	box-shadow: none !important;
+	pointer-events: none;
+}
+
+.search-result img, .search-result .song-thumbnail { max-height: 160px; width: 100%; height: auto; object-fit: cover; border-radius: 8px; }
+
+.search-result .add-from-search, .search-result .add-from-link, .yt-playlist-item .add-yt-video { background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 20px rgba(99,102,241,0.12); transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease; }
+.search-result .add-from-search:hover, .search-result .add-from-link:hover, .yt-playlist-item .add-yt-video:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99,102,241,0.18); }
+.search-result .add-from-search:disabled, .search-result .add-from-link:disabled, .yt-playlist-item .add-yt-video:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+button.adding { opacity: 0.7; pointer-events: none; transform: none !important; }

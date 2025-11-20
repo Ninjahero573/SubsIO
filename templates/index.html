@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SubsIO - Your Music Companion</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bento.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nowplaying.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
@@ -17,8 +21,7 @@
                 <span class="sr-only">Connection status</span>
             </div>
             <div class="header-left">
-                <h1>🎵 SubsIO 💡</h1>
-                <p class="subtitle">Queue your favorite songs and enjoy (more to come!)</p>
+                <h1>🎶 SubsIO 🎮</h1>
             </div>
             <div class="header-controls">
             </div>
@@ -28,41 +31,6 @@
 
         <!-- Top notifications: floating toasts appear here -->
         <div id="top-notifications" class="top-notifications" aria-live="polite" aria-atomic="true"></div>
-
-        <section class="add-song-section">
-            <h2>Add a Song (YouTube only right now)</h2>
-            <form id="add-song-form">
-                <div class="form-group">
-                    <input 
-                        type="text" 
-                        id="song-or-search" 
-                        placeholder="Paste YouTube URL or enter a search term..."
-                    >
-                    <div id="link-results" class="search-results"></div>
-                    <div id="search-status" class="search-status"></div>
-                    <div id="search-results" class="search-results"></div>
-                </div>
-                <div class="form-group">
-                    <input 
-                        type="text" 
-                        id="added-by" 
-                        placeholder="Your name (optional)"
-                        maxlength="50"
-                    >
-                </div>
-                <div class="form-group user-settings">
-                    <span id="current-user" class="user-pill">Name: <strong>Anonymous</strong></span>
-                    <button type="button" id="change-name-btn" class="link-btn" aria-label="Edit name">✎</button>
-                    <button type="button" id="clear-name-btn" class="link-btn" aria-label="Clear name">✖</button>
-                    
-                </div>
-                <button type="submit" id="add-btn" class="primary-btn">
-                    <span>🔍</span> Search
-                </button>
-            </form>
-        </section>
-
-
 
         <!-- Bento card: quick actions + playlists grouped together -->
         <div class="bento-card">
@@ -108,6 +76,42 @@
                 </div>
             </section>
         </div>
+
+
+
+        <section class="add-song-section">
+            <h2>Add a Song (YouTube only right now)</h2>
+            <form id="add-song-form">
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="song-or-search" 
+                        placeholder="Paste YouTube URL or enter a search term..."
+                    >
+                    <div id="link-results" class="search-results"></div>
+                    <div id="search-status" class="search-status"></div>
+                    <div id="search-results" class="search-results"></div>
+                    <button id="search-more-btn" type="button" class="search-more-btn" style="display: none;">Load More Results</button>
+                </div>
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="added-by" 
+                        placeholder="Your name (optional)"
+                        maxlength="50"
+                    >
+                </div>
+                <div class="form-group user-settings">
+                    <span id="current-user" class="user-pill">Name: <strong>Anonymous</strong></span>
+                    <button type="button" id="change-name-btn" class="link-btn" aria-label="Edit name">✎</button>
+                    <button type="button" id="clear-name-btn" class="link-btn" aria-label="Clear name">✖</button>
+                    
+                </div>
+                <button type="submit" id="add-btn" class="primary-btn">
+                    <span>🔍</span> Search
+                </button>
+            </form>
+        </section>
     </div>
 
 

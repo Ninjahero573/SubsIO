@@ -84,8 +84,13 @@ def search():
         return jsonify({'error': 'yt_dlp not available on server'}), 500
 
     try:
-        # Use ytsearch to get a handful of results
-        query = f"ytsearch10:{q}"
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 0))
+        total_search = limit + offset
+        if total_search > 50:  # cap at 50 to avoid too many
+            total_search = 50
+        # Use ytsearch to get results
+        query = f"ytsearch{total_search}:{q}"
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -96,7 +101,9 @@ def search():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
             entries = info.get('entries') or []
-            for e in entries:
+            # Slice to get the requested range
+            sliced_entries = entries[offset:offset + limit]
+            for e in sliced_entries:
                 # Each entry in flat mode may include 'id' and 'title'
                 vid = e.get('id') or e.get('url')
                 # Build a YouTube watch URL when possible

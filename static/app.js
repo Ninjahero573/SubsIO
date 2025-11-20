@@ -1,4 +1,4 @@
-// JukeboxLED Client-side JavaScript
+// SubsIO Client-side JavaScript
 
 let socket;
 let currentQueue = [];
@@ -31,6 +31,9 @@ let searchInput;
 let searchStatus;
 let searchResultsDiv;
 let linkResultsDiv;
+let searchMoreBtn;
+let searchCache = [];
+let searchCachePos = 0;
 
 // Media Control Elements
 let mediaControlsContainer;
@@ -73,6 +76,7 @@ function initializeDOMElements() {
     searchStatus = document.getElementById('search-status');
     searchResultsDiv = document.getElementById('search-results');
     linkResultsDiv = document.getElementById('link-results');
+    searchMoreBtn = document.getElementById('search-more-btn');
     
     // Media control elements
     mediaControlsContainer = document.getElementById('media-controls-container');
@@ -899,42 +903,87 @@ async function loadYouTubePlaylistItems(playlistId) {
 // Search handlers
 function setupSearchHandlers() {
     if (!searchInput || !searchResultsDiv) return;
-
     let lastQuery = '';
+    let currentOffset = 0;
+    const PAGE = 10;
+    let loading = false;
 
-    async function performSearch() {
+    function wireAddButtons(root) {
+        const buttons = (root || searchResultsDiv).querySelectorAll('.add-from-search:not([data-wired])');
+        buttons.forEach(btn => {
+            btn.setAttribute('data-wired', 'true');
+            btn.addEventListener('click', async () => {
+                if (!startAdding(btn)) return;
+                const url = btn.getAttribute('data-url');
+                const addedBy = (addedByInput && addedByInput.value.trim()) || 'Anonymous';
+                try {
+                    const respAdd = await fetch('/api/add_song', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url, added_by: addedBy }),
+                    });
+                    const addData = await respAdd.json();
+                    if (!respAdd.ok) throw new Error(addData.error || 'Failed to add song');
+                    showMessage('Song added to queue!', 'success');
+                    if (typeof loadQueue === 'function') loadQueue();
+                } catch (err) {
+                    console.error('Error adding from search:', err);
+                    showMessage('Failed to add song from search.', 'error');
+                } finally {
+                    finishAdding(btn);
+                }
+            });
+        });
+    }
+
+    async function performSearch(reset = false) {
         const q = searchInput.value.trim();
         if (!q) {
             searchStatus.textContent = 'Enter a search term first';
             searchResultsDiv.innerHTML = '';
+            if (searchMoreBtn) searchMoreBtn.style.display = 'none';
             return;
         }
 
-        // If this is a new query, reset state
-        if (q !== lastQuery) {
-            lastQuery = q;
-            searchResultsDiv.innerHTML = '';
+        if (loading) return;
+        loading = true;
+        // Visually disable the Load More button while loading
+        try {
+            if (searchMoreBtn) {
+                searchMoreBtn.disabled = true;
+                searchMoreBtn.setAttribute('aria-busy', 'true');
+                searchMoreBtn.classList.add('loading');
+            }
+        } catch (e) {
+            // ignore
         }
 
-        searchStatus.textContent = 'Searching...';
+        // If query changed or reset requested, start from beginning
+        if (q !== lastQuery || reset) {
+            lastQuery = q;
+            currentOffset = 0;
+            searchResultsDiv.innerHTML = '';
+            if (searchMoreBtn) searchMoreBtn.style.display = 'none';
+        }
+
+        searchStatus.textContent = (currentOffset === 0) ? 'Searching...' : 'Loading more results...';
 
         try {
-            const params = new URLSearchParams({ q });
+            const params = new URLSearchParams({ q, limit: PAGE, offset: currentOffset });
             const resp = await fetch(`/api/search?${params.toString()}`);
             const data = await resp.json();
-            if (!resp.ok) {
-                throw new Error(data.error || 'Search failed');
-            }
+            if (!resp.ok) throw new Error(data.error || 'Search failed');
 
             const results = data.results || [];
-            if (!results.length) {
+            if (!results.length && currentOffset === 0) {
                 searchStatus.textContent = 'No results found';
                 searchResultsDiv.innerHTML = '';
+                if (searchMoreBtn) searchMoreBtn.style.display = 'none';
+                loading = false;
                 return;
             }
 
-            searchStatus.textContent = `Found ${results.length} result${results.length === 1 ? '' : 's'}`;
-
+            // Append results
             const fragment = results.map(r => `
                 <div class="search-result">
                     ${r.thumbnail ? `<img src="${r.thumbnail}" alt="${escapeHtml(r.title)}" class="song-thumbnail">` : ''}
@@ -950,71 +999,47 @@ function setupSearchHandlers() {
             `).join('');
 
             searchResultsDiv.insertAdjacentHTML('beforeend', fragment);
+            wireAddButtons();
 
-            // Wire up add buttons just for new nodes
-            searchResultsDiv.querySelectorAll('.add-from-search').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    // Prevent duplicate clicks
-                    if (!startAdding(btn)) return;
-                    const url = btn.getAttribute('data-url');
-                    const addedBy = (addedByInput && addedByInput.value.trim()) || 'Anonymous';
+            // Update offset
+            currentOffset += results.length;
 
-                    try {
-                        const respAdd = await fetch('/api/add_song', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ url, added_by: addedBy }),
-                        });
-                        const addData = await respAdd.json();
-                        if (!respAdd.ok) {
-                            throw new Error(addData.error || 'Failed to add song');
-                        }
-                        showMessage('Song added to queue!', 'success');
-                        if (typeof loadQueue === 'function') loadQueue();
-                    } catch (err) {
-                        console.error('Error adding from search:', err);
-                        showMessage('Failed to add song from search.', 'error');
-                    } finally {
-                        finishAdding(btn);
-                    }
-                });
-            });
+            // Show or hide more button depending on whether we received a full page
+            if (results.length === PAGE) {
+                if (searchMoreBtn) searchMoreBtn.style.display = '';
+                searchStatus.textContent = `Showing ${currentOffset}+ results`;
+            } else {
+                if (searchMoreBtn) searchMoreBtn.style.display = 'none';
+                searchStatus.textContent = `Showing ${currentOffset} result${currentOffset === 1 ? '' : 's'}`;
+            }
 
         } catch (err) {
             console.error('Search error:', err);
             searchStatus.textContent = 'Search failed. Please try again.';
-        }
-
-        // No pagination UI in the new layout
-    }
-
-    if (searchInput) {
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                // If the user entered a URL, allow the form submit to proceed
-                // so the link-preview/add flow runs. Only intercept Enter
-                // and run `performSearch()` when the input looks like a
-                // search term (not a URL).
-                const val = (searchInput.value || '').trim();
-                const looksLikeUrl = /^(https?:\/\/)|(^www\.)|youtube\.com|youtu\.be/i.test(val);
-                if (looksLikeUrl) {
-                    // Auto-add the URL on Enter: prevent the normal form
-                    // submit and call the add endpoint directly so Enter
-                    // works for both paste-link and search flows.
-                    e.preventDefault();
-                    const addedBy = (addedByInput && addedByInput.value.trim()) || 'Anonymous';
-                    addUrl(val, addedBy);
-                    return;
+            if (searchMoreBtn) searchMoreBtn.style.display = 'none';
+        } finally {
+            loading = false;
+            try {
+                if (searchMoreBtn) {
+                    searchMoreBtn.disabled = false;
+                    searchMoreBtn.removeAttribute('aria-busy');
+                    searchMoreBtn.classList.remove('loading');
                 }
-
-                e.preventDefault();
-                performSearch();
+            } catch (e) {
+                // ignore
             }
-        });
+        }
     }
 
     // Expose performSearch for form submit handler
-    window._jukeboxPerformSearch = performSearch;
+    window._jukeboxPerformSearch = () => performSearch(true);
+
+    // Handle more button click
+    if (searchMoreBtn) {
+        searchMoreBtn.addEventListener('click', () => {
+            performSearch(false);
+        });
+    }
 }
 
 // Setup Socket handlers

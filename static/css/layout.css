@@ -1,0 +1,46 @@
+/* layout.css — page-level layout, responsive grid, add-song spacing, youtube playlists panel layout */
+/* General responsive adjustments and grid definitions */
+@media (max-width: 900px) {
+    h1 { font-size: 2em; }
+    .bento-grid { width: 100%; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); grid-auto-rows: auto; height: auto; }
+    main { grid-template-columns: minmax(0, 1fr); }
+    section { padding: 18px 16px; }
+}
+
+@media (max-width: 900px) {
+    .add-song-section { width: 100%; max-width: none; box-sizing: border-box; margin-left: 0; margin-right: 0; padding-left: 16px; padding-right: 16px; }
+}
+
+@media (max-width: 900px) { .bento-grid { width: 100%; } }
+
+/* YouTube Playlists Right Column Layout (desktop) */
+@media (min-width: 900px) {
+    main { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr); gap: 24px; }
+
+    #youtube-playlists-panel { grid-column: 1 / -1; position: relative; width: 100%; max-height: none; overflow: visible; padding: 12px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(15,23,42,0.85), rgba(15,23,42,0.98)); border: 1px solid rgba(148,163,184,0.4); }
+
+    .youtube-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+
+    .yt-column { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+
+    .yt-playlists, .yt-playlist-items { max-height: 360px; overflow-y: auto; padding: 8px; border-radius: 10px; }
+
+    .add-song-section, .now-playing-section, .queue-section { grid-column: 1 / -1; margin-top: 0; padding: 18px 20px; width: 100%; }
+
+    .yt-column { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+
+    .yt-playlists, .yt-playlist-items { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 8px; overflow-y: auto; max-height: calc((100vh - 260px) / 2); }
+
+    .yt-playlist-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; transition: background 0.12s, transform 0.08s; }
+    .yt-playlist-item:hover { background: rgba(99,102,241,0.06); transform: translateX(2px); }
+    .yt-playlist-item .title { color: var(--text-primary); font-weight: 600; font-size: 0.95em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .yt-playlist-item .meta { color: var(--text-secondary); font-size: 0.85em; }
+    .yt-add-btn { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.9em; }
+}
+
+@media (max-width: 899px) {
+    .bento-card .youtube-panel { grid-template-columns: 1fr; }
+    .bento-card .yt-playlists, .bento-card .yt-playlist-items { max-height: 280px; }
+    .yt-playlists, .yt-playlist-items { max-height: 320px; overflow-y: auto; }
+    .add-song-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 12px; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.45); margin-bottom: 16px; }
+}
