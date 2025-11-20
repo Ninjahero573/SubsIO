@@ -6,6 +6,9 @@ let currentSong = null;
 let isPlaying = false;
 let songDuration = 0;
 let currentTime = 0;
+// Display name of the signed-in YouTube user (populated after auth)
+let youtubeDisplayName = null;
+let spotifyDisplayName = null;
 
 // DOM Elements (will be initialized when DOM is ready)
 let songForm;
@@ -23,9 +26,43 @@ let currentUserSpan;
 let changeNameBtn;
 let clearNameBtn;
 let youtubeLoginBtn;
+let spotifyLoginBtn;
 let ytPlaylistsDiv;
 let ytPlaylistItemsDiv;
 let ytPlaylistsPanel;
+let spPlaylistsDiv;
+let spPlaylistItemsDiv;
+// Helper map & visibility utility
+const panelMap = {
+    youtube: {
+        playlists: () => ytPlaylistsPanel,
+        items: () => ytPlaylistItemsDiv
+    },
+    spotify: {
+        playlists: () => spPlaylistsDiv,
+        items: () => spPlaylistItemsDiv
+    }
+};
+
+function setPanelVisibility(service, section, visible, opts = {}) {
+    const svc = panelMap[service];
+    if (!svc) return;
+    const getter = svc[section];
+    if (!getter) return;
+    const el = getter();
+    if (!el) return;
+    if (visible) {
+        el.style.display = '';
+        el.setAttribute('aria-hidden', 'false');
+        if (opts.focusFirst) {
+            const focusable = el.querySelector('button, [tabindex], a');
+            if (focusable) focusable.focus();
+        }
+    } else {
+        el.style.display = 'none';
+        el.setAttribute('aria-hidden', 'true');
+    }
+}
 // Search UI Elements
 let searchInput;
 let searchStatus;
@@ -68,9 +105,18 @@ function initializeDOMElements() {
     changeNameBtn = document.getElementById('change-name-btn');
     clearNameBtn = document.getElementById('clear-name-btn');
     youtubeLoginBtn = document.getElementById('youtube-login-btn');
+    spotifyLoginBtn = document.getElementById('spotify-login-btn');
     ytPlaylistsDiv = document.getElementById('yt-playlists');
     ytPlaylistItemsDiv = document.getElementById('yt-playlist-items');
     ytPlaylistsPanel = document.getElementById('youtube-playlists-panel');
+    // Spotify panel elements (may not exist until template updated)
+    spPlaylistsDiv = document.getElementById('sp-playlists');
+    spPlaylistItemsDiv = document.getElementById('sp-playlist-tracks');
+    // Hide playlist panels/items by default until auth confirmed
+    setPanelVisibility('youtube','playlists',false);
+    setPanelVisibility('youtube','items',false);
+    setPanelVisibility('spotify','playlists',false);
+    setPanelVisibility('spotify','items',false);
     // Treat the same element as the search input for convenience
     searchInput = songUrlInput;
     searchStatus = document.getElementById('search-status');
@@ -348,7 +394,10 @@ function updateNPQueuePanel(queue) {
         const stageLabel = stageLabelFor(stage);
         return `
             <div class="np-queue-item" data-song-id="${song.id}">
-                <div class="np-queue-number">${pos}</div>
+                <div class="np-queue-left">
+                    <div class="np-queue-number">${pos}</div>
+                    <button class="queue-delete-btn" title="Remove from queue" aria-label="Remove from queue" data-remove-id="${song.id}">🗑</button>
+                </div>
                 ${thumb}
                 <div class="np-qi-info">
                     <div class="np-qi-title">${title}</div>
@@ -366,6 +415,26 @@ function updateNPQueuePanel(queue) {
             </div>
         `;
     }).join('');
+
+    // Wire deletion handlers
+    npQueueList.querySelectorAll('.queue-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = btn.getAttribute('data-remove-id');
+            if (!id) return;
+            btn.disabled = true;
+            try {
+                const resp = await fetch(`/api/queue/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'Remove failed');
+                showMessage('Song removed from queue', 'success');
+                loadQueue();
+            } catch (err) {
+                console.error('Failed to remove song', err);
+                showMessage('Failed to remove song', 'error');
+                btn.disabled = false;
+            }
+        });
+    });
 }
 
 function setupNowPlayingQueueToggle() {
@@ -724,63 +793,205 @@ function setupUsernameHandlers() {
 
 // OAuth UI handlers
 function setupAuthHandlers() {
-    if (!youtubeLoginBtn) return;
-
-    // Clicking the button starts login, or signs out if already signed-in
-    youtubeLoginBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (youtubeLoginBtn.classList.contains('signed-in')) {
-            // Sign out flow: call the logout endpoint and refresh UI
-            try {
+    // YouTube button (existing behavior)
+    if (youtubeLoginBtn) {
+        youtubeLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (youtubeLoginBtn.classList.contains('signed-in')) {
                 fetch('/auth/youtube/logout', { method: 'GET' }).then(resp => {
                     showMessage('Signed out of YouTube', 'success');
-                    // reload UI state
                     setTimeout(() => window.location.reload(), 300);
-                }).catch(err => {
-                    console.error('Logout failed', err);
-                    showMessage('Sign-out failed', 'error');
-                });
-            } catch (err) {
-                console.error('Logout exception', err);
-                showMessage('Sign-out failed', 'error');
+                }).catch(err => { console.error('Logout failed', err); showMessage('Sign-out failed', 'error'); });
+                return;
             }
-            return;
-        }
-        // Navigate to start YouTube OAuth flow
-        window.location.href = '/auth/youtube/login';
-    });
+            window.location.href = '/auth/youtube/login';
+        });
+    }
 
-    // On load, check whether the user is already authenticated by calling the playlists endpoint
+    // Spotify button (new)
+    if (spotifyLoginBtn) {
+        spotifyLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (spotifyLoginBtn.classList.contains('signed-in')) {
+                fetch('/auth/spotify/logout', { method: 'GET' }).then(resp => {
+                    showMessage('Signed out of Spotify', 'success');
+                    setTimeout(() => window.location.reload(), 300);
+                }).catch(err => { console.error('Spotify logout failed', err); showMessage('Sign-out failed', 'error'); });
+                return;
+            }
+            window.location.href = '/auth/spotify/login';
+        });
+    }
+
+    // On load, check whether the user is already authenticated by calling the playlists endpoints
     (async function checkAuthStatus() {
+        // YouTube check
         try {
             const resp = await fetch('/api/youtube/playlists');
-                if (resp.ok) {
-                    // Signed in: mark the button visually and load playlists
-                    youtubeLoginBtn.classList.add('signed-in');
-                    youtubeLoginBtn.disabled = false;
-                    youtubeLoginBtn.title = 'Sign out of YouTube';
-                    if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = '';
-                    loadYouTubePlaylists();
-            } else {
-                // Not signed in - leave button active and keep playlists panel visible
-                    youtubeLoginBtn.classList.remove('signed-in');
-                    youtubeLoginBtn.disabled = false;
-                    youtubeLoginBtn.title = 'Sign in with YouTube';
-                    // Keep the playlists panel visible so the user can see the
-                    // sign-in prompt / empty state and understand where playlists
-                    // will appear after signing in.
-                    if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = '';
-            }
-        } catch (err) {
-            // Network or endpoint error - keep login button enabled
+            if (resp.ok && youtubeLoginBtn) {
+                youtubeLoginBtn.classList.add('signed-in');
+                youtubeLoginBtn.disabled = false;
+                youtubeLoginBtn.title = 'Sign out of YouTube';
+                setPanelVisibility('youtube','playlists',true,{focusFirst:true});
+                loadYouTubePlaylists();
+                try {
+                    const p = await fetch('/api/youtube/profile');
+                    if (p.ok) {
+                        const pd = await p.json();
+                        youtubeDisplayName = pd.displayName || null;
+                        const stored = localStorage.getItem('jukebox_username');
+                        if ((!stored || stored === '') && youtubeDisplayName && currentUserSpan) {
+                            currentUserSpan.innerHTML = `Name: <strong>${escapeHtml(youtubeDisplayName)}</strong>`;
+                            if (addedByInput) { addedByInput.value = youtubeDisplayName; addedByInput.style.display = 'none'; }
+                        }
+                    }
+                } catch (e) { console.warn('Failed to fetch YouTube profile', e); }
+            } else if (youtubeLoginBtn) {
                 youtubeLoginBtn.classList.remove('signed-in');
                 youtubeLoginBtn.disabled = false;
-                // Network or endpoint error - keep the playlists panel visible
-                // so the UI doesn't disappear unexpectedly. The panel will show
-                // the default empty-state or an error message when load is attempted.
-                if (ytPlaylistsPanel) ytPlaylistsPanel.style.display = '';
+                youtubeLoginBtn.title = 'Sign in with YouTube';
+                setPanelVisibility('youtube','playlists',false);
+                setPanelVisibility('youtube','items',false);
+            }
+        } catch (err) {
+            if (youtubeLoginBtn) { youtubeLoginBtn.classList.remove('signed-in'); youtubeLoginBtn.disabled = false; setPanelVisibility('youtube','playlists',false); setPanelVisibility('youtube','items',false); }
+        }
+
+        // Spotify check
+        try {
+            const resp = await fetch('/api/spotify/playlists');
+            if (resp.ok && spotifyLoginBtn) {
+                spotifyLoginBtn.classList.add('signed-in');
+                spotifyLoginBtn.disabled = false;
+                spotifyLoginBtn.title = 'Sign out of Spotify';
+                setPanelVisibility('spotify','playlists',true,{focusFirst:true});
+                loadSpotifyPlaylists();
+                try {
+                    const p = await fetch('/api/spotify/profile');
+                    if (p.ok) {
+                        const pd = await p.json();
+                        spotifyDisplayName = pd.displayName || null;
+                        const stored = localStorage.getItem('jukebox_username');
+                        if ((!stored || stored === '') && spotifyDisplayName && currentUserSpan) {
+                            currentUserSpan.innerHTML = `Name: <strong>${escapeHtml(spotifyDisplayName)}</strong>`;
+                            if (addedByInput) { addedByInput.value = spotifyDisplayName; addedByInput.style.display = 'none'; }
+                        }
+                    }
+                } catch (e) { console.warn('Failed to fetch Spotify profile', e); }
+            } else if (spotifyLoginBtn) {
+                spotifyLoginBtn.classList.remove('signed-in');
+                spotifyLoginBtn.disabled = false;
+                spotifyLoginBtn.title = 'Sign in with Spotify';
+                setPanelVisibility('spotify','playlists',false);
+                setPanelVisibility('spotify','items',false);
+            }
+        } catch (err) {
+            if (spotifyLoginBtn) { spotifyLoginBtn.classList.remove('signed-in'); spotifyLoginBtn.disabled = false; setPanelVisibility('spotify','playlists',false); setPanelVisibility('spotify','items',false); }
         }
     })();
+}
+
+
+// Load and render Spotify playlists
+async function loadSpotifyPlaylists() {
+    if (!spPlaylistsDiv) return;
+    spPlaylistsDiv.innerHTML = '<div class="loading">Loading playlists...</div>';
+    try {
+        const resp = await fetch('/api/spotify/playlists');
+        const data = await resp.json();
+        if (!resp.ok) { spPlaylistsDiv.innerHTML = `<div class="error">${data.error || 'Failed to load playlists'}</div>`; return; }
+        const items = data.items || [];
+        if (!items.length) { spPlaylistsDiv.innerHTML = '<div class="empty-state"><p>No playlists found.</p></div>'; return; }
+        spPlaylistsDiv.innerHTML = items.map(p => {
+            const thumb = p.thumbnail || '';
+            const title = escapeHtml(p.title || 'Playlist');
+            const count = typeof p.count === 'number' ? ` <small>(${p.count})</small>` : '';
+            return `
+            <div class="yt-playlist" data-playlist-id="${p.id}">
+                <button class="yt-playlist-btn" aria-label="${title}">
+                    ${thumb ? `<img src="${thumb}" alt="${title}" class="yt-playlist-art">` : `<div class="yt-playlist-art placeholder"></div>`}
+                    <div class="yt-playlist-title">${title}${count}</div>
+                </button>
+            </div>
+            `;
+        }).join('');
+
+        spPlaylistsDiv.querySelectorAll('.yt-playlist-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const el = e.currentTarget.closest('.yt-playlist');
+                const pid = el && el.getAttribute('data-playlist-id');
+                if (pid) loadSpotifyPlaylistTracks(pid);
+            });
+            btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
+        });
+    } catch (err) {
+        console.error('Error loading Spotify playlists:', err);
+        spPlaylistsDiv.innerHTML = '<div class="error">Failed to load playlists</div>';
+    }
+}
+
+
+// Load Spotify playlist tracks and render add buttons that search YouTube and add
+async function loadSpotifyPlaylistTracks(playlistId) {
+    if (!spPlaylistItemsDiv) return;
+    // Reveal the tracks container when loading
+    setPanelVisibility('spotify','items',true);
+    spPlaylistItemsDiv.innerHTML = '<div class="loading">Loading playlist tracks...</div>';
+    try {
+        const resp = await fetch(`/api/spotify/playlist/${encodeURIComponent(playlistId)}/tracks`);
+        const data = await resp.json();
+        if (!resp.ok) { spPlaylistItemsDiv.innerHTML = `<div class="error">${data.error || 'Failed to load tracks'}</div>`; return; }
+        const items = data.items || [];
+        if (!items.length) { spPlaylistItemsDiv.innerHTML = '<div class="empty-state"><p>No items in this playlist.</p></div>'; return; }
+
+        spPlaylistItemsDiv.innerHTML = items.map(it => `
+            <div class="yt-playlist-item">
+                ${it.thumbnail ? `<img src="${it.thumbnail}" class="song-thumbnail">` : ''}
+                <div class="song-info">
+                    <div class="song-title">${escapeHtml(it.title)}</div>
+                    <div class="song-artist">${escapeHtml(it.artists || '')}</div>
+                </div>
+                <div class="actions">
+                    <button class="add-sp-track" data-track-id="${it.id}" data-title="${escapeHtml(it.title)}" data-artists="${escapeHtml(it.artists || '')}">Add</button>
+                </div>
+            </div>
+        `).join('');
+
+        spPlaylistItemsDiv.querySelectorAll('.add-sp-track').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (!startAdding(btn)) return;
+                const title = btn.getAttribute('data-title') || '';
+                const artists = btn.getAttribute('data-artists') || '';
+                const query = `${title} ${artists}`.trim();
+                try {
+                    // Search YouTube for the best match
+                    const params = new URLSearchParams({ q: query, limit: 1 });
+                    const s = await fetch(`/api/search?${params.toString()}`);
+                    const sd = await s.json();
+                    if (!s.ok || !sd.results || !sd.results.length) throw new Error('No matching YouTube result found');
+                    const url = sd.results[0].url;
+                    const addedBy = (addedByInput && addedByInput.value.trim()) || spotifyDisplayName || 'Spotify';
+                    const respAdd = await fetch('/api/add_song', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url, added_by: addedBy })
+                    });
+                    const addData = await respAdd.json();
+                    if (!respAdd.ok) throw new Error(addData.error || 'Add failed');
+                    showMessage('Song added to queue!', 'success');
+                    if (typeof loadQueue === 'function') loadQueue();
+                } catch (err) {
+                    console.error('Error adding Spotify track:', err);
+                    showMessage('Failed to add track to queue', 'error');
+                } finally {
+                    finishAdding(btn);
+                }
+            });
+        });
+
+    } catch (err) {
+        console.error('Error loading Spotify playlist tracks:', err);
+        spPlaylistItemsDiv.innerHTML = '<div class="error">Failed to load playlist tracks</div>';
+    }
 }
 
 
@@ -841,6 +1052,8 @@ async function loadYouTubePlaylists() {
 // Load items for a playlist and show add buttons
 async function loadYouTubePlaylistItems(playlistId) {
     if (!ytPlaylistItemsDiv) return;
+    // Reveal the items container when loading
+    setPanelVisibility('youtube','items',true);
     ytPlaylistItemsDiv.innerHTML = '<div class="loading">Loading playlist items...</div>';
     try {
         const resp = await fetch(`/api/youtube/playlist/${encodeURIComponent(playlistId)}/items`);
@@ -874,7 +1087,7 @@ async function loadYouTubePlaylistItems(playlistId) {
                 if (!startAdding(btn)) return;
                 const vid = btn.getAttribute('data-video-id');
                 const url = `https://www.youtube.com/watch?v=${vid}`;
-                const addedBy = (addedByInput && addedByInput.value.trim()) || 'YouTube';
+                const addedBy = (addedByInput && addedByInput.value.trim()) || youtubeDisplayName || 'YouTube';
                 try {
                     const respAdd = await fetch('/api/add_song', {
                         method: 'POST',

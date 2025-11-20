@@ -47,10 +47,10 @@
                 <img class="youtube-img" src="/images/youtube.jpg" alt="YouTube">
             </button>
 
-            <a class="bento-item spotify-link" href="https://open.spotify.com" target="_blank" rel="noopener" role="listitem" aria-label="Open Spotify">
+            <button class="bento-item spotify-login-btn" id="spotify-login-btn" role="listitem" aria-label="Sign in with Spotify" title="Sign in with Spotify">
                 <!-- Use shipped image asset for Spotify logo -->
                 <img class="spotify-img" src="/images/spotify.jpg" alt="Spotify" />
-            </a>
+            </button>
 
             <button class="bento-item" id="bento-queue" type="button" role="listitem" aria-label="Open queue" title="Open queue">
                 <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -75,12 +75,27 @@
                     </div>
                 </div>
             </section>
+            <!-- Spotify Playlists Panel -->
+            <section id="spotify-playlists-panel" class="spotify-panel">
+                <div class="yt-column">
+                    <h3>Your Spotify Playlists</h3>
+                    <div id="sp-playlists" class="sp-playlists">
+                        <div class="empty-state"><p>Sign in to Spotify to view playlists.</p></div>
+                    </div>
+                </div>
+                <div class="yt-column">
+                    <h3>Playlist Tracks</h3>
+                    <div id="sp-playlist-tracks" class="sp-playlist-tracks">
+                        <div class="empty-state"><p>Select a playlist to see tracks.</p></div>
+                    </div>
+                </div>
+            </section>
         </div>
 
 
 
         <section class="add-song-section">
-            <h2>Add a Song (YouTube only right now)</h2>
+            <h2>Add a song to the queue!</h2>
             <form id="add-song-form">
                 <div class="form-group">
                     <input 

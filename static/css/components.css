@@ -167,8 +167,26 @@ input[type="text"]:focus { outline: none; border-color: var(--primary-color); bo
 
 .search-result img, .search-result .song-thumbnail { max-height: 160px; width: 100%; height: auto; object-fit: cover; border-radius: 8px; }
 
-.search-result .add-from-search, .search-result .add-from-link, .yt-playlist-item .add-yt-video { background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 20px rgba(99,102,241,0.12); transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease; }
-.search-result .add-from-search:hover, .search-result .add-from-link:hover, .yt-playlist-item .add-yt-video:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99,102,241,0.18); }
-.search-result .add-from-search:disabled, .search-result .add-from-link:disabled, .yt-playlist-item .add-yt-video:disabled { opacity: 0.6; cursor: default; transform: none; }
+.search-result .add-from-search, .search-result .add-from-link, .yt-playlist-item .add-yt-video, .yt-playlist-item .add-sp-track { background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 20px rgba(99,102,241,0.12); transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease; }
+.search-result .add-from-search:hover, .search-result .add-from-link:hover, .yt-playlist-item .add-yt-video:hover, .yt-playlist-item .add-sp-track:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99,102,241,0.18); }
+.search-result .add-from-search:disabled, .search-result .add-from-link:disabled, .yt-playlist-item .add-yt-video:disabled, .yt-playlist-item .add-sp-track:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+/* Spotify-themed Add button override */
+.yt-playlist-item .add-sp-track {
+	background: linear-gradient(135deg, #1DB954, #17a34a) !important;
+	box-shadow: 0 8px 20px rgba(29,185,84,0.16) !important;
+}
+.yt-playlist-item .add-sp-track:hover {
+	box-shadow: 0 12px 30px rgba(29,185,84,0.24) !important;
+}
+
+/* YouTube-themed Add button override */
+.yt-playlist-item .add-yt-video {
+	background: linear-gradient(135deg, #FF0000, #CC0000) !important;
+	box-shadow: 0 8px 20px rgba(255,0,0,0.16) !important;
+}
+.yt-playlist-item .add-yt-video:hover {
+	box-shadow: 0 12px 30px rgba(255,0,0,0.24) !important;
+}
 
 button.adding { opacity: 0.7; pointer-events: none; transform: none !important; }
