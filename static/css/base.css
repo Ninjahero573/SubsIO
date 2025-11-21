@@ -100,10 +100,70 @@ h2, h3 { margin-top: 0; }
 .connection-indicator.disconnected {
     border-color: rgba(239,68,68,0.12);
     box-shadow: 0 8px 22px rgba(239,68,68,0.04);
+    /* Disable pointer events when disconnected so it cannot be clicked */
+    pointer-events: none;
+    cursor: default;
+}
+
+.connection-indicator.connecting {
+    /* Also disable pointer events while connecting */
+    pointer-events: none;
+    cursor: default;
 }
 .connection-indicator.connecting {
     border-color: rgba(245,158,11,0.12);
     box-shadow: 0 8px 18px rgba(245,158,11,0.04);
+}
+
+/* Hover: fill the pill with the current status color and keep text readable */
+.connection-indicator:hover { transform: translateY(-50%); }
+
+.connection-indicator.connected:hover {
+    /* Solid green fill so the pill looks fully filled (no transparent caps) */
+    background: var(--success-color);
+    color: #fff;
+    border-color: rgba(16,185,129,0.22);
+    box-shadow: 0 12px 30px rgba(16,185,129,0.12);
+}
+.connection-indicator.connected:hover .connection-text { color: #fff; }
+.connection-indicator.connected:hover .indicator-dot { box-shadow: 0 8px 24px rgba(16,185,129,0.22); }
+
+.connection-indicator.disconnected:hover {
+    /* Solid red fill for disconnected state */
+    background: var(--error-color);
+    color: #fff;
+    border-color: rgba(239,68,68,0.18);
+    box-shadow: 0 12px 30px rgba(239,68,68,0.10);
+}
+.connection-indicator.disconnected:hover .connection-text { color: #fff; }
+.connection-indicator.disconnected:hover .indicator-dot { box-shadow: 0 8px 24px rgba(239,68,68,0.18); }
+
+.connection-indicator.connecting:hover {
+    /* Solid orange fill for connecting state; use dark text for contrast */
+    background: var(--connecting-color);
+    color: #081218;
+    border-color: rgba(245,158,11,0.14);
+    box-shadow: 0 12px 30px rgba(245,158,11,0.10);
+}
+.connection-indicator.connecting:hover .connection-text { color: #081218; }
+.connection-indicator.connecting:hover .indicator-dot { box-shadow: 0 8px 24px rgba(245,158,11,0.14); }
+
+/* Make the small indicator dot turn white on hover (match text) */
+.connection-indicator:hover .indicator-dot {
+    background: #ffffff !important;
+    /* fully white border to make the dot pop against filled pill */
+    border-color: #ffffff !important;
+    border-width: 2px !important;
+    box-shadow: 0 10px 30px rgba(255,255,255,0.28) !important;
+}
+
+/* Ensure connected/disconnected/connecting hover states also allow the white dot to show */
+.connection-indicator.connected:hover .indicator-dot,
+.connection-indicator.disconnected:hover .indicator-dot,
+.connection-indicator.connecting:hover .indicator-dot {
+    background: #ffffff !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 10px 30px rgba(255,255,255,0.28) !important;
 }
 
 .connection-indicator .indicator-dot {
@@ -114,6 +174,10 @@ h2, h3 { margin-top: 0; }
     background: #778299;
     box-shadow: 0 4px 12px rgba(2,6,23,0.45);
     transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, opacity 180ms ease;
+    position: relative;
+    z-index: 2;
+    /* subtle border so the dot remains visible against similarly colored pill backgrounds */
+    border: 2px solid rgba(255,255,255,0.06);
 }
 
 .connection-indicator .indicator-dot.connected { background: var(--success-color); box-shadow: 0 8px 20px rgba(16,185,129,0.18); animation: indicatorPulse 1400ms infinite; }

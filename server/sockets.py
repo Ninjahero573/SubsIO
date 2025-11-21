@@ -19,6 +19,7 @@ def handle_connect():
     bridge_count = sum(1 for c in connected_clients.values() if c.get('is_bridge'))
     browser_count = sum(1 for c in connected_clients.values() if not c.get('is_bridge'))
     print(f'  Total: {bridge_count} bridge(s), {browser_count} browser(s)')
+    # No user announced yet; clients may announce their username separately.
 
 
 @socketio.on('announce_bridge')
@@ -34,6 +35,41 @@ def handle_announce_bridge(data):
     bridge_count = sum(1 for c in connected_clients.values() if c.get('is_bridge'))
     browser_count = sum(1 for c in connected_clients.values() if not c.get('is_bridge'))
     print(f'  Total: {bridge_count} bridge(s), {browser_count} browser(s)')
+
+
+@socketio.on('announce_user')
+def handle_announce_user(data):
+    """Client announces its user info (e.g. display name). Stored per-socket.
+
+    Expected payload: { 'name': 'Alice' }
+    """
+    sid = request.sid
+    info = data or {}
+    name = info.get('name') or ''
+    if sid not in connected_clients:
+        connected_clients[sid] = {}
+    connected_clients[sid]['user'] = {'name': name}
+    print(f"👥 User announced for {sid}: {name}")
+
+
+@socketio.on('request_user_list')
+def handle_request_user_list():
+    """Send the list of connected browser users to the requesting socket."""
+    sid = request.sid
+    try:
+        users = []
+        for s, info in connected_clients.items():
+            # Only include browser clients (not bridge/hardware)
+            if info.get('is_bridge'):
+                continue
+            u = info.get('user') or {}
+            # For anonymity, don't include raw socket id; include a short id
+            short_id = (s[:8] + '..') if isinstance(s, str) and len(s) > 8 else s
+            users.append({'id': short_id, 'name': u.get('name') or 'Anonymous'})
+        socketio.emit('user_list', {'users': users}, room=sid)
+        print(f"Sent user list to {sid}, {len(users)} users")
+    except Exception as e:
+        print(f"Error building user list: {e}")
 
 
 @socketio.on('disconnect')
@@ -88,25 +124,6 @@ def handle_skip_song(data):
         queue_manager.skip_current()
         socketio.emit('song_skipped', {'direction': 'next'})
         print("  ⏭️ Skipped to next song")
-
-
-@socketio.on('seek_song')
-def handle_seek_song(data):
-    time_pos = data.get('time', 0)
-    print(f"⏩ Seek to {time_pos:.1f}s")
-
-
-@socketio.on('set_volume')
-def handle_set_volume(data):
-    volume = data.get('volume', 0.7)
-    print(f"🔊 Volume set to {volume * 100:.0f}%")
-    try:
-        import pygame
-        if hasattr(pygame, 'mixer'):
-            pygame.mixer.music.set_volume(volume)
-    except Exception:
-        pass
-
 
 @socketio.on('arduino_info')
 def handle_arduino_info(data):

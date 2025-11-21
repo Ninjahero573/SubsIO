@@ -71,6 +71,9 @@ let linkResultsDiv;
 let searchMoreBtn;
 let searchCache = [];
 let searchCachePos = 0;
+// Presence polling state
+let presencePollInterval = null;
+let cachedUserList = [];
 
 // Media Control Elements
 let mediaControlsContainer;
@@ -142,6 +145,16 @@ function initializeDOMElements() {
         console.error('Could not find form elements');
         return false;
     }
+    // If indicator starts in connecting/disconnected state, mark it aria-disabled
+    try {
+        if (connectionIndicator) {
+            if (connectionIndicator.classList.contains('connecting') || connectionIndicator.classList.contains('disconnected')) {
+                connectionIndicator.setAttribute('aria-disabled', 'true');
+            } else {
+                connectionIndicator.removeAttribute('aria-disabled');
+            }
+        }
+    } catch (e) {}
     return true;
 }
 
@@ -752,6 +765,7 @@ function setupUsernameHandlers() {
             // hide input to keep UI clean
             if (addedByInput) addedByInput.style.display = 'none';
             showMessage('Name saved', 'success');
+            try { announceCurrentUser(); } catch (e) {}
         } else {
             // empty -> clear stored name
             localStorage.removeItem('jukebox_username');
@@ -788,6 +802,21 @@ function setupUsernameHandlers() {
                 addedByInput.blur();
             }
         });
+    }
+}
+
+// Announce the current user name to the server (if available)
+function announceCurrentUser() {
+    try {
+        if (!socket) return;
+        if (!socket.connected) return;
+        const stored = localStorage.getItem('jukebox_username');
+        const name = (stored && stored.trim()) || youtubeDisplayName || spotifyDisplayName || null;
+        if (name) {
+            socket.emit('announce_user', { name: name });
+        }
+    } catch (e) {
+        // ignore
     }
 }
 
@@ -843,6 +872,7 @@ function setupAuthHandlers() {
                         if ((!stored || stored === '') && youtubeDisplayName && currentUserSpan) {
                             currentUserSpan.innerHTML = `Name: <strong>${escapeHtml(youtubeDisplayName)}</strong>`;
                             if (addedByInput) { addedByInput.value = youtubeDisplayName; addedByInput.style.display = 'none'; }
+                            try { announceCurrentUser(); } catch (e) {}
                         }
                     }
                 } catch (e) { console.warn('Failed to fetch YouTube profile', e); }
@@ -875,6 +905,7 @@ function setupAuthHandlers() {
                         if ((!stored || stored === '') && spotifyDisplayName && currentUserSpan) {
                             currentUserSpan.innerHTML = `Name: <strong>${escapeHtml(spotifyDisplayName)}</strong>`;
                             if (addedByInput) { addedByInput.value = spotifyDisplayName; addedByInput.style.display = 'none'; }
+                            try { announceCurrentUser(); } catch (e) {}
                         }
                     }
                 } catch (e) { console.warn('Failed to fetch Spotify profile', e); }
@@ -1277,7 +1308,23 @@ function setupSocketHandlers() {
             connectionIndicator.classList.remove('disconnected', 'connecting');
             connectionIndicator.classList.add('connected');
         }
+        try { if (connectionIndicator) connectionIndicator.removeAttribute('aria-disabled'); } catch (e) {}
+        // Tell the server who we are (if we have a saved/display name)
+        try { announceCurrentUser(); } catch (e) {}
         loadQueue();
+        // start automatic presence polling
+        try { startPresencePoll(); } catch (e) {}
+    });
+
+    // When socket attempts to reconnect, show connecting state and disable interaction
+    socket.on('reconnect_attempt', () => {
+        try {
+            if (connectionIndicator) {
+                connectionIndicator.classList.remove('connected', 'disconnected');
+                connectionIndicator.classList.add('connecting');
+                connectionIndicator.setAttribute('aria-disabled', 'true');
+            }
+        } catch (e) {}
     });
 
     socket.on('disconnect', () => {
@@ -1300,6 +1347,9 @@ function setupSocketHandlers() {
             connectionIndicator.classList.remove('connected', 'connecting');
             connectionIndicator.classList.add('disconnected');
         }
+        try { if (connectionIndicator) connectionIndicator.setAttribute('aria-disabled', 'true'); } catch (e) {}
+        // stop polling while disconnected
+        try { stopPresencePoll(); } catch (e) {}
     });
 
     socket.on('queue_updated', (data) => {
@@ -1461,6 +1511,201 @@ function setupSocketHandlers() {
             // ignore
         }
     });
+
+    // Presence: handle list returned from server
+    socket.on('user_list', (data) => {
+        const users = (data && data.users) ? data.users : [];
+        // Cache the latest list so opening the popup shows fresh data
+        cachedUserList = users;
+        // If the popup is currently open, update its contents in place
+        const existing = document.getElementById('presence-popup');
+        if (existing) {
+            updatePresencePopup(users);
+        }
+    });
+
+    // Clicking the connection indicator requests the current user list
+    if (connectionIndicator) {
+        connectionIndicator.style.cursor = 'pointer';
+        connectionIndicator.setAttribute('aria-haspopup', 'true');
+        connectionIndicator.setAttribute('aria-expanded', 'false');
+        connectionIndicator.addEventListener('click', (e) => {
+            e.stopPropagation();
+                // Prevent opening when disconnected or while connecting
+                if (connectionIndicator.classList.contains('disconnected') || connectionIndicator.classList.contains('connecting')) {
+                    try { showMessage('Cannot view users while disconnected or connecting', 'info'); } catch (e) {}
+                    return;
+                }
+            const existing = document.getElementById('presence-popup');
+            // Toggle: if popup exists, close it; otherwise request list and open
+            if (existing) {
+                if (typeof window.closePresencePopup === 'function') {
+                    try { window.closePresencePopup(); } catch (err) { existing.remove(); }
+                } else {
+                    try { existing.remove(); } catch (e) {}
+                }
+                connectionIndicator.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            // show a small loading popup while the server responds
+            connectionIndicator.setAttribute('aria-expanded', 'true');
+            showPresencePopup([], true);
+            try { socket.emit('request_user_list'); } catch (err) { showPresencePopup([], false); }
+        });
+    }
+
+    // Start background polling when connected
+    function startPresencePoll() {
+        try {
+            if (presencePollInterval) return;
+            // Immediately request once
+            if (socket && socket.connected && !(connectionIndicator && connectionIndicator.classList.contains('disconnected'))) {
+                try { socket.emit('request_user_list'); } catch (e) {}
+            }
+            presencePollInterval = setInterval(() => {
+                if (!socket || !socket.connected) return;
+                if (connectionIndicator && connectionIndicator.classList.contains('disconnected')) return;
+                try { socket.emit('request_user_list'); } catch (e) {}
+            }, 15000);
+        } catch (e) { /* ignore */ }
+    }
+
+    function stopPresencePoll() {
+        try { if (presencePollInterval) { clearInterval(presencePollInterval); presencePollInterval = null; } } catch (e) {}
+    }
+
+    // Update the popup contents without re-creating it
+    function updatePresencePopup(users) {
+        const popup = document.getElementById('presence-popup');
+        if (!popup) return;
+        const header = popup.querySelector('.presence-header');
+        const list = popup.querySelector('.presence-list');
+        if (header) header.textContent = `Connected users (${(users && users.length) ? users.length : 0})`;
+        if (!list) return;
+        list.innerHTML = '';
+        if (!users || !users.length) {
+            const li = document.createElement('div');
+            li.className = 'presence-item empty';
+            li.textContent = 'No other users connected';
+            list.appendChild(li);
+            return;
+        }
+        users.forEach(u => {
+            const li = document.createElement('div');
+            li.className = 'presence-item';
+            const name = u.name || u.short_id || 'Anonymous';
+            const id = u.short_id ? ` (${u.short_id})` : '';
+            li.textContent = name + id;
+            list.appendChild(li);
+        });
+    }
+}
+
+// Render a small presence popup anchored near the connection indicator
+function showPresencePopup(users, loading = false) {
+    // Remove existing popup if present
+    const existing = document.getElementById('presence-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'presence-popup';
+    popup.className = 'presence-popup';
+
+    const header = document.createElement('div');
+    header.className = 'presence-header';
+    header.textContent = loading ? 'Connected users — loading…' : `Connected users (${users.length})`;
+    popup.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'presence-list';
+
+    if (loading) {
+        const li = document.createElement('div');
+        li.className = 'presence-item loading';
+        li.textContent = 'Loading...';
+        list.appendChild(li);
+    } else if (!users || !users.length) {
+        const li = document.createElement('div');
+        li.className = 'presence-item empty';
+        li.textContent = 'No other users connected';
+        list.appendChild(li);
+    } else {
+        users.forEach(u => {
+            const li = document.createElement('div');
+            li.className = 'presence-item';
+            const name = u.name || u.short_id || 'Anonymous';
+            const id = u.short_id ? ` (${u.short_id})` : '';
+            li.textContent = name + id;
+            list.appendChild(li);
+        });
+    }
+
+    popup.appendChild(list);
+
+    // Close affordance
+    const close = document.createElement('button');
+    close.className = 'presence-close';
+    close.setAttribute('aria-label', 'Close');
+    close.innerHTML = '✕';
+    close.addEventListener('click', () => closePresencePopup());
+    popup.appendChild(close);
+
+    document.body.appendChild(popup);
+
+    // animate open to match queue panel
+    requestAnimationFrame(() => {
+        try { popup.classList.add('open'); } catch (e) {}
+    });
+
+    // Position near the connection indicator if available
+    try {
+        if (connectionIndicator) {
+            const rect = connectionIndicator.getBoundingClientRect();
+            // place popup below the indicator if there is room, otherwise above
+            const top = rect.bottom + 8;
+            const left = Math.min(window.innerWidth - 12 - popup.offsetWidth, Math.max(8, rect.left));
+            popup.style.position = 'fixed';
+            // Clear any CSS right/bottom values so the browser doesn't stretch
+            popup.style.right = 'auto';
+            popup.style.bottom = 'auto';
+            popup.style.left = `${left}px`;
+            popup.style.top = `${top}px`;
+        } else {
+            // center near top-right if no indicator
+            popup.style.position = 'fixed';
+            // ensure left/top not interfering
+            popup.style.left = 'auto';
+            popup.style.top = '56px';
+            popup.style.right = '14px';
+            popup.style.bottom = 'auto';
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    // Close when clicking outside or pressing Esc
+    setTimeout(() => {
+        document.addEventListener('click', onDocClick);
+        document.addEventListener('keydown', onDocKey);
+    }, 0);
+
+    function onDocClick(ev) {
+        if (!popup.contains(ev.target)) closePresencePopup();
+    }
+    function onDocKey(ev) {
+        if (ev.key === 'Escape') closePresencePopup();
+    }
+
+    function closePresencePopup() {
+        try { document.removeEventListener('click', onDocClick); } catch (e) {}
+        try { document.removeEventListener('keydown', onDocKey); } catch (e) {}
+        try { popup.remove(); } catch (e) {}
+        try { if (connectionIndicator) connectionIndicator.setAttribute('aria-expanded', 'false'); } catch (e) {}
+    }
+
+    // expose close to outer scope
+    window.closePresencePopup = closePresencePopup;
 }
 
 // Bento menu click handlers (quick actions)
