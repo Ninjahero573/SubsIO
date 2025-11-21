@@ -36,8 +36,15 @@ except Exception as e:
     raise ImportError("cryptography package is required for token encryption. Install with: pip install cryptography") from e
 
 
-_DB_FILENAME = os.getenv('OAUTH_TOKEN_DB', os.path.join(os.path.dirname(__file__), '..', 'auth_tokens.db'))
-_KEY_FILE = os.getenv('OAUTH_KEY_FILE', os.path.join(os.path.dirname(__file__), '..', '.oauth_key'))
+# Default database location: place `auth_tokens.db` inside the `auth/` package
+# directory so related files are grouped together. The path can still be
+# overridden by setting the `OAUTH_TOKEN_DB` environment variable.
+_DB_FILENAME = os.getenv('OAUTH_TOKEN_DB', os.path.join(os.path.dirname(__file__), 'auth_tokens.db'))
+
+# Key file: default to a keyfile stored next to this module inside `auth/`.
+# This keeps auth artifacts together. You can still override via
+# `OAUTH_KEY_FILE` environment variable if you prefer a different location.
+_KEY_FILE = os.getenv('OAUTH_KEY_FILE', os.path.join(os.path.dirname(__file__), '.oauth_key'))
 
 
 def _get_fernet() -> Fernet:

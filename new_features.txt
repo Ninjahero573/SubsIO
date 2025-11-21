@@ -1,0 +1,5 @@
+------------------------------------------------------------------------
+WebRTC + SFU implementation for live streaming to anybody on the website
+
+-Will take a while to implement
+-------------------------------------------------------------------------

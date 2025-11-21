@@ -14,18 +14,36 @@
 <body>
     <div class="container">
         <header>
-            <!-- connection indicator (replaces hamburger) -->
-            <div id="connection-indicator" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status">
+            <!-- connection indicator (status) moved back to the far left -->
+            <div id="connection-indicator" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status" aria-hidden="false">
                 <span class="indicator-dot connecting" aria-hidden="true"></span>
                 <span id="connection-text" class="connection-text connecting">Connecting...</span>
                 <span class="sr-only">Connection status</span>
             </div>
+
             <div class="header-left">
                 <h1>🎶 SubsIO 🎮</h1>
             </div>
+
             <div class="header-controls">
+                <!-- Hamburger menu button placed at the very right -->
+                <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu" aria-expanded="false" aria-controls="site-menu">☰</button>
             </div>
         </header>
+
+        <!-- Site menu popup toggled by hamburger -->
+        <nav id="site-menu" class="site-menu" role="menu" aria-hidden="true">
+            <div class="site-menu-header">
+                <div class="site-menu-title">Menu</div>
+                <button id="site-menu-close" class="link-btn" title="Close menu">✕</button>
+            </div>
+            <div class="site-menu-list">
+                <button role="menuitem" class="site-menu-item">Profile</button>
+                <button role="menuitem" class="site-menu-item">Settings</button>
+                <button role="menuitem" class="site-menu-item">My Playlists</button>
+                <button role="menuitem" class="site-menu-item">Sign out</button>
+            </div>
+        </nav>
 
 
 
@@ -168,6 +186,6 @@
         </div>
 
         
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

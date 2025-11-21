@@ -39,7 +39,7 @@ $env:GOOGLE_OAUTH_CLIENT_SECRET = 'your-client-secret'
 $env:OAUTH_ENC_KEY = 'base64-or-passphrase'
 ```
 
-If `OAUTH_ENC_KEY` is not provided, a local `.oauth_key` will be created in the repo (developer convenience only).
+If `OAUTH_ENC_KEY` is not provided, a local `.oauth_key` will be created inside the `auth/` folder (developer convenience only).
 
 4. Run the app (default binds to port 80):
 
@@ -60,7 +60,7 @@ Open a browser to `http://localhost:5000` (or `http://<host>:<port>`).
 ## Important env vars
 - `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` — required for YouTube OAuth features.
 - `OAUTH_ENC_KEY` — Fernet key or passphrase to encrypt OAuth tokens (recommended for production).
-- `OAUTH_TOKEN_DB` — optional path to token DB (defaults to `auth_tokens.db`).
+- `OAUTH_TOKEN_DB` — optional path to token DB (defaults to `auth/auth_tokens.db`).
 
 ## Project layout (key files)
 - `app.py` — launcher that starts background workers and the Flask+SocketIO server.

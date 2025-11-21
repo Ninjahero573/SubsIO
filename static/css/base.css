@@ -19,6 +19,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { overflow-x: hidden; }
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     position: relative;
@@ -27,6 +29,7 @@ body {
     /* Revert to normal top padding since header is no longer fixed */
     padding: 0px 0;
     padding-bottom: calc(var(--now-playing-height) + var(--np-panel-height, 0px) + 32px);
+    overflow-x: hidden;
 }
 
 body::before {
@@ -51,9 +54,9 @@ header {
     background: linear-gradient(180deg, rgba(40, 44, 56, 0.9), rgba(35, 43, 62, 0.95));
     border-bottom: 1px solid rgba(255,255,255,0.03);
     box-shadow: 0 8px 20px rgba(2,6,23,0.6);
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    justify-content: center;
     gap: 12px;
 }
 
@@ -65,7 +68,9 @@ header {
     border-radius: 0; /* remove rounded corners so it reads as a full-width bar */
 }
 
-.header-left { flex: none; text-align: center; }
+.header-left { justify-self: center; text-align: center; }
+
+.header-controls { justify-self: end; display: flex; align-items: center; gap: 8px; }
 
 h1 { text-align: center; font-size: 2.4em; line-height: 1.05; margin-bottom: 6px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .subtitle { text-align: center; color: var(--text-secondary); font-size: 1em; margin-top: 2px; }
@@ -207,4 +212,54 @@ h2, h3 { margin-top: 0; }
     .header-left .subtitle, header .subtitle { font-size: 0.9rem; margin-top: 0; display: none; }
     .connection-text { display: none; }
     .connection-indicator { border: none; left: 8px; }
+    .hamburger-btn { font-size: 1.25rem; padding: 8px 10px; }
 }
+
+/* Hamburger button (right-most control) */
+.hamburger-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    line-height: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.hamburger-btn:hover { background: rgba(255,255,255,0.03); }
+.hamburger-btn:focus { outline: 2px solid rgba(99,102,241,0.24); outline-offset: 2px; }
+
+/* Optional site menu that can be toggled by the hamburger */
+/* site menu: styled similarly to the queue panel (top-right popup) */
+#site-menu, .site-menu {
+    position: fixed;
+    right: 12px;
+    top: calc(var(--header-height) + 8px);
+    width: 320px;
+    max-width: calc(100% - 48px);
+    max-height: 64vh;
+    background: linear-gradient(180deg, rgba(6,8,14,0.99), rgba(10,12,20,0.995));
+    border-radius: 12px;
+    box-shadow: 0 16px 60px rgba(2,6,23,0.7);
+    overflow: auto;
+    padding: 10px;
+    z-index: 1600;
+    display: block;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    pointer-events: none;
+    transition: transform 180ms cubic-bezier(.2,.9,.3,1), opacity 160ms ease-in-out;
+    transform-origin: right top;
+}
+.site-menu.open, #site-menu.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+
+body.menu-open { --menu-open: 1; }
+
+.site-menu-header { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.03); margin-bottom:8px; }
+.site-menu-title { font-weight:700; }
+.site-menu-list { display:flex; flex-direction:column; gap:8px; padding:4px; }
+.site-menu-item { text-align:left; background: rgba(255,255,255,0.02); color:var(--text-primary); border:1px solid rgba(255,255,255,0.02); padding:10px; border-radius:8px; cursor:pointer; }
+.site-menu-item:hover { background: rgba(255,255,255,0.04); }
