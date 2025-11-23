@@ -3,24 +3,26 @@
 
 .bento-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.55); padding: 12px; margin: 14px 0; }
 
-.bento-card .youtube-panel, .bento-card .spotify-panel { 
-	/* Convert to flexible tile-style layout matching bento buttons */
-	display: flex; 
-	flex-wrap: wrap; 
-	gap: 16px; 
-	margin-top: 0; 
-	padding-top: 12px; 
-	padding-bottom: 12px; 
+.bento-card .youtube-panel, .bento-card .spotify-panel {
+	/* Use a 2-column grid so the two columns share the same row height
+	   which makes an empty panel expand to match its sibling. */
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 16px;
+	margin-top: 0;
+	padding-top: 12px;
+	padding-bottom: 12px;
+	align-items: stretch;
 }
 
 /* Each column (playlists list / items list) should size like a single bento tile */
 .bento-card .youtube-panel .yt-column, .bento-card .spotify-panel .yt-column {
-	/* 2x2 tile size: span two original tile widths (half the card) */
-	flex: 0 0 calc((100% - 16px) / 2);
-	max-width: calc((100% - 16px) / 2);
+	/* Column container: stack header + panels vertically and fill available row height */
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+	height: 100%;
+	min-height: 0;
 }
 
 .bento-card #youtube-playlists-panel { background: transparent; border: none; padding: 0; box-shadow: none; }
@@ -32,10 +34,18 @@
 	border: 1px solid var(--border-color);
 	border-radius: 14px;
 	padding: 10px;
+	/* Use the JS-provided CSS var to cap height relative to width.
+	   Default to no cap if the var isn't set. Allow scrolling inside
+	   when content exceeds the cap. */
+	max-height: var(--box-max-h, none);
 	overflow-y: auto;
-	/* 2x tile height (original was 200px) */
-	height: 400px;
-	max-height: 400px;
+}
+/* Ensure playlists and items boxes within each column share height */
+.bento-card .youtube-panel .yt-column > .yt-playlists,
+.bento-card .youtube-panel .yt-column > .yt-playlist-items,
+.bento-card .spotify-panel .yt-column > .sp-playlists,
+.bento-card .spotify-panel .yt-column > .sp-playlist-tracks {
+	flex: 1 1 auto;
 }
 
 .bento-card .yt-playlists, .bento-card .sp-playlists { 
@@ -43,6 +53,47 @@
 	grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); 
 	gap: 8px; 
 	align-items: start; 
+}
+
+/* Ensure playlist-items panels stretch and center their empty-state; layout for grid set in media query below */
+.bento-card .yt-playlist-items, .bento-card .sp-playlist-tracks {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.bento-card .yt-playlist-items .empty-state,
+.bento-card .sp-playlist-tracks .empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1 1 auto;
+	padding: 12px;
+}
+
+/* Desktop: cap the playlist boxes' height to their width using a CSS variable set from JS.
+   This allows the box to shrink to fit content when there isn't much, but prevents it
+   from growing taller than its width when there is lots of content. The JS sets
+   `--box-max-h` to the element's computed width (in px). */
+/* Desktop: show playlist-items as a responsive grid; at smaller widths the JS will
+   set a smaller --box-max-h multiplier so boxes aren't forced too tall. */
+@media (min-width: 600px) {
+	.bento-card .yt-playlist-items, .bento-card .sp-playlist-tracks {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: 6px;
+		padding: 8px;
+		align-items: stretch;
+	}
+}
+
+/* On very small screens, don't apply the width-based cap — keep inner scrolling for usability */
+@media (max-width: 599px) {
+	.bento-card .yt-playlists, .bento-card .yt-playlist-items,
+	.bento-card .sp-playlists, .bento-card .sp-playlist-tracks {
+		max-height: 300px;
+		overflow-y: auto;
+	}
 }
 
 .yt-playlist { display: block; }
@@ -132,9 +183,48 @@
 	.bento-item.spotify-login-btn img.spotify-img, .bento-item.youtube-login-btn img.youtube-img { object-fit: cover; }
 	/* On mobile stack one per row for readability */
 	.bento-card .youtube-panel .yt-column, .bento-card .spotify-panel .yt-column {
-		flex: 0 0 100%;
-		max-width: 100%;
+		grid-column: 1 / -1;
+		width: 100%;
 	}
+	/* On small screens, cap height and allow inner scrolling to keep UI usable */
 	.bento-card .yt-playlists, .bento-card .yt-playlist-items,
-	.bento-card .sp-playlists, .bento-card .sp-playlist-tracks { height: 300px; max-height: 300px; }
+	.bento-card .sp-playlists, .bento-card .sp-playlist-tracks {
+		max-height: 300px;
+		overflow-y: auto;
+	}
 }
+
+/* Themed scrollbars for inner scrollable panels (WebKit & Firefox) */
+.bento-card .yt-playlists, .bento-card .yt-playlist-items,
+.bento-card .sp-playlists, .bento-card .sp-playlist-tracks,
+.search-results, #np-queue-list, .presence-list {
+	/* Firefox */
+	scrollbar-width: thin;
+	scrollbar-color: var(--primary-color) rgba(255,255,255,0.03);
+}
+
+/* WebKit-based browsers */
+.bento-card .yt-playlists::-webkit-scrollbar, .bento-card .yt-playlist-items::-webkit-scrollbar,
+.bento-card .sp-playlists::-webkit-scrollbar, .bento-card .sp-playlist-tracks::-webkit-scrollbar,
+.search-results::-webkit-scrollbar, #np-queue-list::-webkit-scrollbar, .presence-list::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+.bento-card .yt-playlists::-webkit-scrollbar-track, .bento-card .yt-playlist-items::-webkit-scrollbar-track,
+.bento-card .sp-playlists::-webkit-scrollbar-track, .bento-card .sp-playlist-tracks::-webkit-scrollbar-track,
+.search-results::-webkit-scrollbar-track, #np-queue-list::-webkit-scrollbar-track, .presence-list::-webkit-scrollbar-track {
+	background: transparent;
+}
+.bento-card .yt-playlists::-webkit-scrollbar-thumb, .bento-card .yt-playlist-items::-webkit-scrollbar-thumb,
+.bento-card .sp-playlists::-webkit-scrollbar-thumb, .bento-card .sp-playlist-tracks::-webkit-scrollbar-thumb,
+.search-results::-webkit-scrollbar-thumb, #np-queue-list::-webkit-scrollbar-thumb, .presence-list::-webkit-scrollbar-thumb {
+	background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+	border-radius: 999px;
+	border: 2px solid rgba(0,0,0,0.12);
+}
+.bento-card .yt-playlists::-webkit-scrollbar-thumb:hover, .bento-card .yt-playlist-items::-webkit-scrollbar-thumb:hover,
+.bento-card .sp-playlists::-webkit-scrollbar-thumb:hover, .bento-card .sp-playlist-tracks::-webkit-scrollbar-thumb:hover,
+.search-results::-webkit-scrollbar-thumb:hover, #np-queue-list::-webkit-scrollbar-thumb:hover, .presence-list::-webkit-scrollbar-thumb:hover {
+	filter: brightness(0.95);
+}
+

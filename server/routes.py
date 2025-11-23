@@ -8,6 +8,7 @@ import traceback
 from typing import Optional
 
 import requests
+import base64
 from flask import render_template, request, jsonify, send_file, send_from_directory, session, redirect, url_for
 from config import OAUTH_REDIRECT_URI as DEFAULT_OAUTH_REDIRECT_URI, OAUTH_REDIRECT_BASE
 
@@ -478,6 +479,176 @@ def api_youtube_playlist_items(playlist_id: str):
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': 'failed_to_load_playlist_items', 'details': str(e)}), 500
+
+
+# --- Spotify helper endpoints ----------------------------------------------
+def _spotify_user_id_from_session():
+    return session.get('oauth_user_spotify')
+
+
+def _load_spotify_creds(user_id: str):
+    if not user_id:
+        return None
+    try:
+        return load_credentials(user_id)
+    except Exception:
+        return None
+
+
+def _refresh_spotify_token_for_user(user_id: str, creds: dict):
+    """Attempt to refresh Spotify access token using refresh_token and client creds.
+
+    Returns tuple (updated_creds_dict, error_message). On success error_message is None.
+    """
+    token_uri = creds.get('token_uri') or os.getenv('SPOTIFY_TOKEN_URI') or 'https://accounts.spotify.com/api/token'
+    refresh_token = creds.get('refresh_token')
+    client_id = os.getenv('SPOTIFY_CLIENT_ID')
+    client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+    if not (refresh_token and client_id and client_secret):
+        return None, 'missing_refresh_or_client_credentials'
+
+    auth_value = base64.b64encode(f"{client_id}:{client_secret}".encode('utf-8')).decode('utf-8')
+    headers = {'Authorization': f'Basic {auth_value}', 'Content-Type': 'application/x-www-form-urlencoded'}
+    data = {'grant_type': 'refresh_token', 'refresh_token': refresh_token}
+    try:
+        r = requests.post(token_uri, data=data, headers=headers, timeout=10)
+    except Exception as e:
+        return None, str(e)
+    if not r.ok:
+        return None, f'spotify_refresh_failed: {r.status_code} {r.text}'
+    try:
+        tok = r.json()
+    except Exception:
+        return None, 'invalid_json_from_token_endpoint'
+
+    # Update creds dict with new access token (and refresh token if provided)
+    if 'access_token' in tok:
+        creds['token'] = tok.get('access_token')
+    if 'refresh_token' in tok and tok.get('refresh_token'):
+        creds['refresh_token'] = tok.get('refresh_token')
+    creds['token_uri'] = token_uri
+
+    try:
+        save_credentials(user_id, creds)
+    except Exception:
+        pass
+
+    return creds, None
+
+
+def _spotify_api_request(user_id: str, method: str, path: str, params=None, json_body=None):
+    """Make a request to the Spotify Web API on behalf of `user_id`.
+
+    Automatically attempts one token refresh on 401 and will persist refreshed token.
+    """
+    creds = _load_spotify_creds(user_id)
+    if not creds:
+        return None, ('credentials_not_found', 401)
+    access_token = creds.get('token')
+    headers = {'Authorization': f'Bearer {access_token}'} if access_token else {}
+    url = f'https://api.spotify.com/v1{path}'
+    try:
+        r = requests.request(method, url, headers=headers, params=params, json=json_body, timeout=10)
+    except Exception as e:
+        return None, (str(e), 500)
+
+    # If unauthorized, try refresh once
+    if r.status_code == 401:
+        refreshed, err = _refresh_spotify_token_for_user(user_id, creds)
+        if refreshed:
+            # retry with new token
+            access_token = refreshed.get('token')
+            headers = {'Authorization': f'Bearer {access_token}'} if access_token else {}
+            try:
+                r = requests.request(method, url, headers=headers, params=params, json=json_body, timeout=10)
+            except Exception as e:
+                return None, (str(e), 500)
+        else:
+            return None, (err or 'refresh_failed', 401)
+
+    if not r.ok:
+        # Propagate remote error (include status code)
+        try:
+            data = r.json()
+        except Exception:
+            data = r.text
+        return None, (data, r.status_code)
+
+    try:
+        return r.json(), None
+    except Exception:
+        return r.text, None
+
+
+@app.route('/api/spotify/profile', methods=['GET'])
+def api_spotify_profile():
+    user_id = _spotify_user_id_from_session()
+    if not user_id:
+        return jsonify({'error': 'not_authenticated'}), 401
+    data, err = _spotify_api_request(user_id, 'GET', '/me')
+    if err:
+        msg, code = err
+        return jsonify({'error': 'spotify_api_error', 'details': msg}), code
+    # Return a simplified profile to the client
+    profile = {
+        'display_name': data.get('display_name'),
+        'id': data.get('id'),
+        'email': data.get('email'),
+        'images': data.get('images', []),
+        'product': data.get('product')
+    }
+    return jsonify(profile)
+
+
+@app.route('/api/spotify/playlists', methods=['GET'])
+def api_spotify_playlists():
+    user_id = _spotify_user_id_from_session()
+    if not user_id:
+        return jsonify({'error': 'not_authenticated'}), 401
+    params = {'limit': 50}
+    data, err = _spotify_api_request(user_id, 'GET', '/me/playlists', params=params)
+    if err:
+        msg, code = err
+        return jsonify({'error': 'spotify_api_error', 'details': msg}), code
+    items = []
+    for p in data.get('items', []):
+        items.append({
+            'id': p.get('id'),
+            'name': p.get('name'),
+            'thumbnail': (p.get('images') or [{}])[0].get('url'),
+            'tracks': p.get('tracks', {}).get('total')
+        })
+    return jsonify({'items': items})
+
+
+@app.route('/api/spotify/playlist/<playlist_id>/tracks', methods=['GET'])
+def api_spotify_playlist_tracks(playlist_id: str):
+    user_id = _spotify_user_id_from_session()
+    if not user_id:
+        return jsonify({'error': 'not_authenticated'}), 401
+
+    # Paginate through playlist tracks (Spotify returns 100 per page)
+    items = []
+    limit = 100
+    offset = 0
+    while True:
+        params = {'limit': limit, 'offset': offset}
+        data, err = _spotify_api_request(user_id, 'GET', f'/playlists/{playlist_id}/tracks', params=params)
+        if err:
+            msg, code = err
+            return jsonify({'error': 'spotify_api_error', 'details': msg}), code
+        for it in data.get('items', []):
+            track = it.get('track') or {}
+            items.append({
+                'id': track.get('id'),
+                'name': track.get('name'),
+                'artists': [a.get('name') for a in (track.get('artists') or [])],
+                'thumbnail': (track.get('album', {}).get('images') or [{}])[0].get('url')
+            })
+        offset += limit
+        if not data.get('next'):
+            break
+    return jsonify({'items': items, 'count': len(items)})
 
 
 @app.route('/admin/oauth_config', methods=['GET'])

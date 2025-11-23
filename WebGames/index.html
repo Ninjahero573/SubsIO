@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebGames Arcade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body>
+  <div class="site">
+    <header class="site-header">
+      <div class="site-title">WebGames Arcade</div>
+      <div class="wallet">
+        <span class="wallet-label">Wallet</span>
+        <span class="wallet-value" id="walletBalance">$0</span>
+        <button class="wallet-reset" id="walletReset">Reset</button>
+      </div>
+    </header>
+
+    <main class="site-main">
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="sidebar-section">
+            <div class="sidebar-label">Search</div>
+            <input class="sidebar-input" id="gameSearch" type="text" placeholder="Search games...">
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-label">Category</div>
+            <select class="sidebar-select" id="categoryFilter">
+              <option value="all">All games</option>
+              <option value="slots">Slots</option>
+              <option value="card">Card</option>
+              <option value="fishing">Fishing</option>
+            </select>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-label">Sort by</div>
+            <select class="sidebar-select" id="sortOrder">
+              <option value="featured">Featured</option>
+              <option value="alpha">A–Z</option>
+            </select>
+          </div>
+        </aside>
+        <section class="games-panel">
+          <div class="games-toolbar">
+            <div class="games-toolbar-left">
+              <div class="games-toolbar-title">Games</div>
+              <div class="games-toolbar-subtitle">Click a game card to play.</div>
+            </div>
+            <div class="games-toolbar-right">
+              <span id="gamesCount" class="games-count">0 games</span>
+            </div>
+          </div>
+          <section class="games-grid" id="gamesGrid">
+            <a
+              class="game-card"
+              href="Slots/index.html"
+              data-title="Galaxy Slots"
+              data-category="slots"
+              data-popularity="100"
+              data-featured="true"
+            >
+              <div class="game-card-title">Galaxy Slots</div>
+              <div class="game-card-tag">Slots • High volatility</div>
+              <div class="game-card-meta">Use your shared wallet balance.</div>
+              <div class="game-card-play">Play</div>
+            </a>
+            <a
+              class="game-card"
+              href="Blackjack/index.html"
+              data-title="Blackjack"
+              data-category="card"
+              data-popularity="90"
+              data-featured="true"
+            >
+              <div class="game-card-title">Blackjack</div>
+              <div class="game-card-tag">Card • Classic casino</div>
+              <div class="game-card-meta">Use your shared wallet balance.</div>
+              <div class="game-card-play">Play</div>
+            </a>
+            <a
+              class="game-card"
+              href="Fishing/index.html"
+              data-title="Fishing"
+              data-category="fishing"
+              data-popularity="85"
+              data-featured="true"
+            >
+              <div class="game-card-title">Fishing</div>
+              <div class="game-card-tag">Fishing • Catch & earn</div>
+              <div class="game-card-meta">Use your shared wallet balance.</div>
+              <div class="game-card-play">Play</div>
+            </a>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="hint">Balance is shared between all games in this arcade.</div>
+    </footer>
+  </div>
+
+  <script src="wallet.js"></script>
+  <script src="portal.js"></script>
+</body>
+</html>

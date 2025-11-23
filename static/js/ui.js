@@ -406,7 +406,9 @@ export function renderSpotifyPlaylists(items, callbacks = {}) {
     }
     elements.spPlaylistsDiv.innerHTML = items.map(p => {
         const thumb = p.thumbnail || '';
-        const title = escapeHtml(p.title || 'Playlist');
+        // Spotify server returns `name` for playlists; fall back to `title` if present
+        const titleRaw = p.name || p.title || 'Playlist';
+        const title = escapeHtml(titleRaw);
         const count = typeof p.count === 'number' ? ` <small>(${p.count})</small>` : '';
         return `
         <div class="yt-playlist" data-playlist-id="${p.id}">
@@ -437,18 +439,24 @@ export function renderSpotifyPlaylistTracks(items, callbacks = {}) {
         return;
     }
 
-    elements.spPlaylistItemsDiv.innerHTML = items.map(it => `
+    elements.spPlaylistItemsDiv.innerHTML = items.map(it => {
+        // Spotify track objects may be provided with `name` instead of `title`.
+        const trackTitleRaw = it.title || it.name || '';
+        const trackArtists = Array.isArray(it.artists) ? it.artists.join(', ') : (it.artists || '');
+        const trackTitle = escapeHtml(trackTitleRaw);
+        const trackArtistsEsc = escapeHtml(trackArtists);
+        return `
         <div class="yt-playlist-item">
             ${it.thumbnail ? `<img src="${it.thumbnail}" class="song-thumbnail">` : ''}
             <div class="song-info">
-                <div class="song-title">${escapeHtml(it.title)}</div>
-                <div class="song-artist">${escapeHtml(it.artists || '')}</div>
+                <div class="song-title">${trackTitle}</div>
+                <div class="song-artist">${trackArtistsEsc}</div>
             </div>
             <div class="actions">
-                <button class="add-sp-track" data-track-id="${it.id}" data-title="${escapeHtml(it.title)}" data-artists="${escapeHtml(it.artists || '')}">Add</button>
+                <button class="add-sp-track" data-track-id="${it.id}" data-title="${trackTitle}" data-artists="${trackArtistsEsc}">Add</button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
     if (callbacks.onAdd) {
         elements.spPlaylistItemsDiv.querySelectorAll('.add-sp-track').forEach(btn => {
