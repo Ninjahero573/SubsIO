@@ -1,6 +1,10 @@
 # JukeboxLED (Subsio)
-
 A web-controlled local music jukebox with LED lightshow support, YouTube search/download, and optional Arduino integration.
+
+## Commands to run server
+be sure to run both commands in seperate windows and in their specified directory
+1. .\cloudflared tunnel run subsio-tunnel
+2. python app.py
 
 ## Quick overview
 - Play and queue audio via a browser UI.
