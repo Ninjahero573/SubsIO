@@ -5,6 +5,7 @@ import * as actions from './actions.js';
 import { showMessage } from './toast.js';
 import { announceCurrentUser } from './auth.js';
 import { formatDuration } from './utils.js';
+import * as audiostream from './audiostream.js';
 
 export function initializeSocket() {
     state.socket = io();
@@ -90,6 +91,9 @@ export function setupSocketHandlers() {
                 ledBar.classList.add('active');
             }
         }
+        
+        // Handle audio streaming for new song
+        audiostream.handleSongStarted(song);
     });
 
     socket.on('song_finished', (song) => {
@@ -100,6 +104,10 @@ export function setupSocketHandlers() {
                 ledBar.classList.remove('active');
             }
         }
+        
+        // Handle audio streaming cleanup
+        audiostream.handleSongFinished();
+        
         actions.loadQueue();
     });
 
@@ -144,6 +152,10 @@ export function setupSocketHandlers() {
         const duration = data.duration || 0;
         const songId = data.song_id || null;
 
+        // Update state
+        state.currentTime = currentTime;
+        state.songDuration = duration;
+
         if (elements.currentTimeDisplay) {
             elements.currentTimeDisplay.textContent = formatDuration(currentTime);
         }
@@ -163,12 +175,18 @@ export function setupSocketHandlers() {
                 npFill.style.width = pct + '%';
             }
         } catch (e) {}
+
+        // Sync audio stream position with server
+        audiostream.syncAudioPosition(currentTime, duration);
     });
 
     socket.on('playback_state_changed', (data) => {
         console.log('Playback state changed', data);
         state.isPlaying = data.is_playing;
         ui.updatePlayPauseButton();
+        
+        // Sync audio stream play/pause state
+        audiostream.handlePlaybackStateChanged(data.is_playing);
     });
 
     socket.on('song_skipped', (data) => {

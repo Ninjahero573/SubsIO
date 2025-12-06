@@ -83,6 +83,31 @@ def handle_disconnect():
     print(f'  Total: {bridge_count} bridge(s), {browser_count} browser(s)')
 
 
+@socketio.on('request_current_state')
+def handle_request_current_state():
+    """Client requests current playback state. Send back current song, play status, etc."""
+    from flask_socketio import emit
+    current_song = queue_manager.get_current_song()
+    state = {
+        'current_song': current_song,
+        'is_playing': playback_state.get('is_playing', False),
+        'current_time': playback_state.get('current_time', 0),
+        'queue_length': len(queue_manager.get_queue()),
+    }
+    emit('current_state', state)
+
+
+@socketio.on('request_queue')
+def handle_request_queue():
+    """Client requests the queue. Send back full queue."""
+    from flask_socketio import emit
+    queue_data = queue_manager.get_queue()
+    # queue_data is a dict with 'queue', 'current', 'is_playing'
+    # Extract just the queue list
+    queue_list = queue_data.get('queue', []) if isinstance(queue_data, dict) else queue_data
+    emit('queue_updated', {'queue': queue_list})
+
+
 @socketio.on('toggle_playback')
 def handle_toggle_playback(data):
     is_playing = data.get('playing', False)
@@ -124,6 +149,30 @@ def handle_skip_song(data):
         queue_manager.skip_current()
         socketio.emit('song_skipped', {'direction': 'next'})
         print("  ⏭️ Skipped to next song")
+
+
+@socketio.on('remove_from_queue')
+def handle_remove_from_queue(data):
+    """Remove a song from the queue by index"""
+    index = data.get('index')
+    if index is not None:
+        queue_data = queue_manager.get_queue()
+        queue = queue_data.get('queue', [])
+        
+        if 0 <= index < len(queue):
+            removed_song = queue.pop(index)
+            print(f"🗑️  Removed from queue: {removed_song.get('title', 'Unknown')} (index {index})")
+            
+            # Save the modified queue
+            queue_manager._save_queue_state()
+            
+            # Notify all clients of the updated queue
+            from flask_socketio import emit
+            updated_queue = queue_data.get('queue', [])
+            socketio.emit('queue_updated', {'queue': updated_queue})
+        else:
+            print(f"⚠ Invalid queue index: {index}")
+
 
 @socketio.on('arduino_info')
 def handle_arduino_info(data):

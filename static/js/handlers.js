@@ -4,6 +4,7 @@ import * as actions from './actions.js';
 import * as ui from './ui.js';
 import { showMessage } from './toast.js';
 import { escapeHtml } from './utils.js';
+import * as audiostream from './audiostream.js';
 
 export function setupMediaControlHandlers() {
     if (elements.playPauseBtn) {
@@ -19,6 +20,104 @@ export function setupMediaControlHandlers() {
     if (elements.skipNextBtn) {
         elements.skipNextBtn.addEventListener('click', () => {
             if (state.socket) state.socket.emit('skip_song', { direction: 'next' });
+        });
+    }
+    
+    // Audio stream toggle button
+    const audioStreamBtn = document.getElementById('audio-stream-btn');
+    if (audioStreamBtn) {
+        let longPressTimer = null;
+        let isLongPress = false;
+        const volumePopup = document.getElementById('audio-volume-popup');
+        
+        const startLongPress = () => {
+            isLongPress = false;
+            longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                if (volumePopup) {
+                    volumePopup.classList.add('visible');
+                }
+            }, 500);
+        };
+        
+        const cancelLongPress = () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        };
+        
+        // Handle click - only toggle if not a long press
+        audioStreamBtn.addEventListener('click', (e) => {
+            if (!isLongPress) {
+                audiostream.toggleAudioStream();
+            }
+            isLongPress = false;
+        });
+        
+        // Right-click for volume popup
+        audioStreamBtn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (volumePopup) {
+                volumePopup.classList.toggle('visible');
+            }
+        });
+        
+        // Desktop mouse events
+        audioStreamBtn.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left click only
+                startLongPress();
+            }
+        });
+        
+        audioStreamBtn.addEventListener('mouseup', () => {
+            cancelLongPress();
+        });
+        
+        audioStreamBtn.addEventListener('mouseleave', () => {
+            cancelLongPress();
+        });
+        
+        // Mobile touch events
+        audioStreamBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startLongPress();
+        });
+        
+        audioStreamBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            cancelLongPress();
+            // Manually trigger click behavior if not a long press
+            if (!isLongPress) {
+                audiostream.toggleAudioStream();
+            }
+            isLongPress = false;
+        });
+        
+        audioStreamBtn.addEventListener('touchcancel', () => {
+            cancelLongPress();
+            isLongPress = false;
+        });
+        
+        // Volume slider control
+        const volumeSlider = document.getElementById('audio-volume-slider');
+        const volumeValue = document.getElementById('audio-volume-value');
+        
+        if (volumeSlider && volumeValue) {
+            volumeSlider.addEventListener('input', (e) => {
+                const volume = parseInt(e.target.value);
+                volumeValue.textContent = volume + '%';
+                audiostream.setAudioVolume(volume / 100);
+            });
+        }
+        
+        // Close volume popup when clicking outside
+        document.addEventListener('click', (e) => {
+            if (volumePopup && 
+                !volumePopup.contains(e.target) && 
+                !audioStreamBtn.contains(e.target)) {
+                volumePopup.classList.remove('visible');
+            }
         });
     }
     
@@ -129,11 +228,7 @@ export function setupBentoHandlers() {
             });
         }
 
-        if (bentoQueue && elements.npToggleBtn) {
-            bentoQueue.addEventListener('click', () => {
-                elements.npToggleBtn.click();
-            });
-        }
+        // Queue button removed - replaced with games button (navigates via href)
 
         if (bentoNow) {
             bentoNow.addEventListener('click', () => {

@@ -1,0 +1,277 @@
+/* Games Section Styling */
+
+/* Header layout */
+header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Back button and connection indicator in header left */
+.header-left {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0px;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--bg-input);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 140ms ease;
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+.back-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--text-primary);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.back-btn:active {
+    transform: scale(0.96);
+}
+
+/* Center title */
+.header-center {
+    text-align: center;
+    justify-self: center;
+}
+
+.header-center h1 {
+    margin: 0;
+    font-size: 2.4rem;
+}
+
+.games-section {
+    padding: 32px 20px;
+    margin-bottom: 20px;
+}
+
+.games-header {
+    margin-bottom: 32px;
+}
+
+.games-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.games-header p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    list-style: none;
+}
+
+.game-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px 24px;
+    border-radius: 12px;
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(30, 41, 59, 0.5));
+    backdrop-filter: blur(10px);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+    cursor: pointer;
+    text-align: center;
+}
+
+.game-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--primary-color);
+    box-shadow: 0 16px 48px rgba(99, 102, 241, 0.15);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(30, 41, 59, 0.7));
+}
+
+.game-card:active {
+    transform: translateY(-3px);
+}
+
+.game-card.coming-soon {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.game-card.coming-soon:hover {
+    transform: none;
+    border-color: rgba(99, 102, 241, 0.1);
+    box-shadow: none;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(30, 41, 59, 0.5));
+}
+
+.game-icon {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.game-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.game-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Wallet Section */
+.wallet-section {
+    padding: 24px 20px;
+    text-align: center;
+}
+
+.wallet-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(99, 102, 241, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.wallet-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.wallet-balance {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.wallet-reset-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 150ms ease;
+}
+
+.wallet-reset-btn:hover {
+    background: rgba(99, 102, 241, 0.25);
+    transform: translateY(-2px);
+}
+
+.wallet-reset-btn:active {
+    transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+    .games-grid {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .games-header h2 {
+        font-size: 1.5rem;
+    }
+
+    .game-card {
+        padding: 24px 16px;
+        gap: 10px;
+    }
+
+    .game-icon {
+        font-size: 3rem;
+    }
+
+    .game-title {
+        font-size: 1.1rem;
+    }
+
+    .game-description {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .games-section {
+        padding: 24px 16px;
+    }
+
+    .games-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .games-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .games-header p {
+        font-size: 0.9rem;
+    }
+
+    .game-card {
+        padding: 20px 12px;
+    }
+
+    .game-icon {
+        font-size: 2.5rem;
+    }
+
+    .game-title {
+        font-size: 1rem;
+    }
+
+    .game-description {
+        font-size: 0.85rem;
+    }
+
+    .wallet-info {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .wallet-balance {
+        font-size: 1.2rem;
+    }
+}

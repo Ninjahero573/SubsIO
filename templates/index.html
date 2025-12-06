@@ -70,12 +70,10 @@
                 <img class="spotify-img" src="/images/spotify.jpg" alt="Spotify" />
             </button>
 
-            <button class="bento-item" id="bento-queue" type="button" role="listitem" aria-label="Open queue" title="Open queue">
-                <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                    <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h12v2H3v-2zm0 5h6v2H3v-2z"/>
-                </svg>
-                <div class="bento-label">Queue</div>
-            </button>
+            <a href="/gamehub/" class="bento-item bento-games" id="bento-games" role="listitem" aria-label="Open games arcade" title="Open games arcade">
+                <div class="bento-icon games-emoji">🎮</div>
+                <div class="bento-label">Games</div>
+            </a>
             </div>
 
             <!-- YouTube Playlists Panel (grouped with bento) -->
@@ -167,6 +165,14 @@
             </div>
             <div class="now-playing-bar-right">
                 <button id="np-toggle-queue-btn" class="control-btn" title="Show queue" aria-expanded="false">☰</button>
+                <div class="audio-stream-wrapper">
+                    <button id="audio-stream-btn" class="control-btn audio-stream-btn" title="Join audio stream" aria-pressed="false">🔇</button>
+                    <div id="audio-volume-popup" class="audio-volume-popup">
+                        <label for="audio-volume-slider" class="volume-label">Browser Volume</label>
+                        <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="100" value="70">
+                        <span id="audio-volume-value" class="volume-value">70%</span>
+                    </div>
+                </div>
                 <button id="play-pause-btn" class="control-btn play-pause" title="Play/Pause" aria-pressed="false"></button>
                 <button id="skip-next-btn" class="control-btn skip" title="Next"></button>
             </div>

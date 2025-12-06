@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blackjack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="game-title">Blackjack</div>
+      <a class="back-link" href="../index.html">&larr; Back to Arcade</a>
+    </header>
+
+    <main class="game">
+      <section class="wallet-panel">
+        <div class="wallet-label">Wallet</div>
+        <div class="wallet-value" id="walletDisplay">$0</div>
+      </section>
+
+      <section class="controls">
+        <div class="control-group">
+          <label for="betInput">Bet amount</label>
+          <input type="number" id="betInput" min="1" step="1" value="50">
+        </div>
+        <div class="control-group buttons">
+          <button class="primary-button" id="dealButton">Deal New Hand</button>
+          <button class="secondary-button" id="hitButton" disabled>Hit</button>
+          <button class="secondary-button" id="standButton" disabled>Stand</button>
+        </div>
+      </section>
+
+      <section class="table">
+        <div class="row">
+          <div class="row-label">Dealer</div>
+          <div class="cards" id="aiCards"></div>
+        </div>
+        <div class="row">
+          <div class="row-label">Player</div>
+          <div class="cards" id="playerCards"></div>
+        </div>
+      </section>
+
+      <section class="status">
+        <div class="status-line" id="statusText">Enter a bet and deal a new hand.</div>
+        <div class="status-line" id="handInfo"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../wallet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

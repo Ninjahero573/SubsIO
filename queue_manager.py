@@ -22,8 +22,10 @@ class QueueManager:
         self.download_dir = 'downloads'
         os.makedirs(self.download_dir, exist_ok=True)
         self.cache_index_file = os.path.join(self.download_dir, 'cache_index.json')
+        self.queue_state_file = os.path.join(self.download_dir, 'queue_state.json')
         self.cache_index = {}
         self._load_cache_index()
+        self._load_queue_state()  # Load saved queue on startup
     
     def add_song(self, url, added_by='Anonymous'):
         """Add a song to the queue"""
@@ -56,6 +58,7 @@ class QueueManager:
                 }
             
             self.queue.append(song)
+            self._save_queue_state()  # Save queue after adding
             return song_id
     
     def download_song(self, song_data, progress_callback=None):
@@ -365,8 +368,48 @@ class QueueManager:
         with self.lock:
             self.current_song = None
             self.is_playing = False
+            self._save_queue_state()  # Save queue state after skip
     
     def remove_song(self, song_id):
         """Remove a song from the queue"""
         with self.lock:
             self.queue = [s for s in self.queue if s['id'] != song_id]
+            self._save_queue_state()  # Save queue state after removal
+
+    # --- Queue persistence helpers -------------------------------------------
+    def _load_queue_state(self):
+        """Load saved queue from disk on startup"""
+        try:
+            if os.path.exists(self.queue_state_file):
+                with open(self.queue_state_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.queue = data.get('queue', [])
+                    self.current_song = data.get('current_song')
+                    self.is_playing = False  # Always start paused
+                    print(f"✓ Queue state loaded: {len(self.queue)} songs")
+                    if self.current_song:
+                        print(f"  Current: {self.current_song.get('title', 'Unknown')}")
+            else:
+                self.queue = []
+                self.current_song = None
+        except Exception as e:
+            print(f"⚠ Error loading queue state: {e}")
+            self.queue = []
+            self.current_song = None
+
+    def _save_queue_state(self):
+        """Save current queue to disk"""
+        try:
+            data = {
+                'queue': self.queue,
+                'current_song': self.current_song,
+                'timestamp': time.time()
+            }
+            with open(self.queue_state_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"⚠ Error saving queue state: {e}")
+
+    def save_queue_if_modified(self):
+        """Helper to save queue state - called after queue modifications"""
+        self._save_queue_state()

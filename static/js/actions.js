@@ -3,17 +3,27 @@ import * as ui from './ui.js';
 import { state } from './state.js';
 import { showMessage } from './toast.js';
 import { elements } from './dom.js';
+import * as audiostream from './audiostream.js';
 
 export async function loadQueue() {
     try {
         const data = await api.fetchQueue();
         ui.updateQueue(data, { onDelete: removeSong });
 
+        // Sync the playing state from the server
+        state.isPlaying = data.is_playing || false;
+
         if (data.current && data.is_playing) {
             ui.updateNowPlaying(data.current);
         } else {
             ui.updateNowPlaying(null);
         }
+        
+        // Update button to reflect current playing state
+        ui.updatePlayPauseButton();
+        
+        // Attempt to resume audio stream if it was playing before navigation
+        audiostream.attemptResumeAudioStream();
     } catch (error) {
         console.error('Error loading queue:', error);
     }

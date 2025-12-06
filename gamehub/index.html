@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGames - SubsIO Arcade</title>
+    <link rel="stylesheet" href="../static/css/base.css">
+    <link rel="stylesheet" href="../static/css/layout.css">
+    <link rel="stylesheet" href="../static/css/components.css">
+    <link rel="stylesheet" href="../static/css/bento.css">
+    <link rel="stylesheet" href="../static/css/nowplaying.css">
+    <link rel="stylesheet" href="games.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <a href="/" class="back-btn" title="Back to Main page" aria-label="Back to main page">Back to main page</a>
+                <!-- connection indicator (status) -->
+                <div id="connection-indicator" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status" aria-hidden="false">
+                    <span class="indicator-dot connecting" aria-hidden="true"></span>
+                    <span id="connection-text" class="connection-text connecting">Connecting...</span>
+                    <span class="sr-only">Connection status</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <h1>🎶 SubsIO 🎮</h1>
+            </div>
+
+            <div class="header-controls">
+                <!-- Hamburger menu button placed at the very right -->
+                <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu" aria-expanded="false" aria-controls="site-menu">☰</button>
+            </div>
+        </header>
+
+        <!-- Site menu popup toggled by hamburger -->
+        <nav id="site-menu" class="site-menu" role="menu" aria-hidden="true">
+            <div class="site-menu-header">
+                <div class="site-menu-title">Menu</div>
+                <button id="site-menu-close" class="link-btn" title="Close menu">✕</button>
+            </div>
+            <div class="site-menu-list">
+                <a href="/" class="site-menu-item">Back to Music</a>
+                <button role="menuitem" class="site-menu-item">Profile</button>
+                <button role="menuitem" class="site-menu-item">Settings</button>
+            </div>
+        </nav>
+
+        <!-- Top notifications: floating toasts appear here -->
+        <div id="top-notifications" class="top-notifications" aria-live="polite" aria-atomic="true"></div>
+
+        <!-- Games Grid Section -->
+        <div class="bento-card games-section">
+            <div class="games-header">
+                <h2>Available Games</h2>
+                <p>Click a game to play. Your wallet balance is shared across all games.</p>
+            </div>
+
+            <div class="games-grid" role="list" aria-label="Available games">
+                <a href="Slots/index.html" class="game-card" role="listitem">
+                    <div class="game-icon">🎰</div>
+                    <div class="game-title">Galaxy Slots</div>
+                    <div class="game-description">High volatility slots with cosmic themes</div>
+                </a>
+
+                <a href="BlackJack/index.html" class="game-card" role="listitem">
+                    <div class="game-icon">🃏</div>
+                    <div class="game-title">Blackjack</div>
+                    <div class="game-description">Classic card game against the dealer</div>
+                </a>
+
+                <a href="Fishing/index.html" class="game-card" role="listitem">
+                    <div class="game-icon">🎣</div>
+                    <div class="game-title">Fishing Game</div>
+                    <div class="game-description">Catch fish to earn rewards</div>
+                </a>
+
+                <!-- Placeholder for future games -->
+                <div class="game-card coming-soon" role="listitem">
+                    <div class="game-icon">🎯</div>
+                    <div class="game-title">More Games Coming</div>
+                    <div class="game-description">Stay tuned for new games</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wallet Info Section -->
+        <section class="wallet-section">
+            <div class="wallet-info">
+                <span class="wallet-label">Your Balance:</span>
+                <span class="wallet-balance" id="walletBalance">$1000.00</span>
+                <button class="wallet-reset-btn" id="walletReset">Reset Balance</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Persistent Now Playing bar -->
+    <div id="now-playing-bar" class="now-playing-bar">
+        <div id="now-playing" class="now-playing-bar-left">
+            <div class="np-thumb" id="np-thumb">
+                <img src="" alt="thumb" id="np-thumb-img" style="display:none;">
+            </div>
+            <div class="np-info">
+                <div id="np-title" class="np-title">No song currently playing</div>
+                <div id="np-artist" class="np-artist"></div>
+            </div>
+        </div>
+        <div class="now-playing-bar-center">
+            <div class="np-progress" id="np-progress">
+                <div class="np-progress-fill" id="np-progress-fill" style="width:0%"></div>
+            </div>
+        </div>
+        <div class="now-playing-bar-right">
+            <button id="np-toggle-queue-btn" class="control-btn" title="Show queue" aria-expanded="false">☰</button>
+            <div class="audio-stream-wrapper">
+                <button id="audio-stream-btn" class="control-btn audio-stream-btn" title="Join audio stream" aria-pressed="false">🔇</button>
+                <div id="audio-volume-popup" class="audio-volume-popup">
+                    <label for="audio-volume-slider" class="volume-label">Browser Volume</label>
+                    <input type="range" id="audio-volume-slider" class="audio-volume-slider" min="0" max="100" value="70">
+                    <span id="audio-volume-value" class="volume-value">70%</span>
+                </div>
+            </div>
+            <button id="play-pause-btn" class="control-btn play-pause" title="Play/Pause" aria-pressed="false"></button>
+            <button id="skip-next-btn" class="control-btn skip" title="Next"></button>
+        </div>
+    </div>
+
+    <!-- Expandable queue panel that appears above the bottom bar -->
+    <div id="np-queue-panel" class="np-queue-panel" aria-hidden="true">
+        <div class="np-queue-header">
+            <div class="np-queue-title">Up Next (<span id="queue-count">0</span>)</div>
+            <button id="np-close-queue-btn" class="link-btn" title="Close">✕</button>
+        </div>
+        <div id="np-queue-list" class="np-queue-list">
+            <!-- Populated dynamically with the current queue -->
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

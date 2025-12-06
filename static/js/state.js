@@ -10,5 +10,10 @@ export const state = {
     searchCache: [],
     searchCachePos: 0,
     presencePollInterval: null,
-    cachedUserList: []
+    cachedUserList: [],
+    // Audio streaming state
+    audioElement: null,
+    isAudioStreaming: false,
+    audioVolume: 0.7,
+    isSyncing: false
 };

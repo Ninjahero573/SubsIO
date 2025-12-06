@@ -190,28 +190,44 @@ export function updateNPQueuePanel(queue, callbacks = {}) {
         const artist = escapeHtml(song.artist || '');
         const thumb = song.thumbnail ? `<img src="${song.thumbnail}" class="song-thumbnail">` : '';
         const pos = i + 1;
-        const prog = (typeof song.progress === 'number') ? song.progress : 0;
-        const stage = song.stage || song.status || 'queued';
-        const stageLabel = stageLabelFor(stage);
+        const status = song.status || 'queued';
+        const progress = (typeof song.progress === 'number') ? song.progress : 0;
+        
+        // Determine status icon and text
+        let statusIcon = '⏳';
+        let statusText = 'Queued';
+        
+        if (status === 'downloading') {
+            statusIcon = '📥';
+            statusText = `Downloading ${progress}%`;
+        } else if (status === 'analyzing') {
+            statusIcon = '🔍';
+            statusText = `Analyzing ${progress}%`;
+        } else if (status === 'generating') {
+            statusIcon = '✨';
+            statusText = `Generating ${progress}%`;
+        } else if (status === 'ready' || status === 'downloaded') {
+            statusIcon = '✅';
+            statusText = 'Downloaded, in queue 100%';
+        } else if (status === 'playing') {
+            statusIcon = '▶️';
+            statusText = 'Now playing';
+        } else if (status === 'error') {
+            statusIcon = '❌';
+            statusText = 'Error';
+        }
+        
         return `
             <div class="np-queue-item" data-song-id="${song.id}">
                 <div class="np-queue-left">
                     <div class="np-queue-number">${pos}</div>
-                    <button class="queue-delete-btn" title="Remove from queue" aria-label="Remove from queue" data-remove-id="${song.id}">🗑</button>
+                    <button class="queue-delete-btn" title="Remove from queue" aria-label="Remove from queue" data-remove-id="${song.id}">🗑️</button>
                 </div>
                 ${thumb}
                 <div class="np-qi-info">
                     <div class="np-qi-title">${title}</div>
                     <div class="np-qi-sub">${artist} • ${formatDuration(song.duration || 0)}${song.added_by ? ` • Added by ${escapeHtml(song.added_by)}` : ''}</div>
-                    <div class="song-progress" id="np-song-progress-${song.id}" style="display:block;margin-top:6px;">
-                        <div class="progress-label">
-                            <span class="progress-stage">${escapeHtml(stageLabel)}</span>
-                            <span class="progress-percent">${prog}%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width:${prog}%;"></div>
-                        </div>
-                    </div>
+                    <div class="np-qi-status" style="font-size: 11px; margin-top: 4px; color: var(--text-secondary);">${statusIcon} ${statusText}</div>
                 </div>
             </div>
         `;

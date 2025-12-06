@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Galaxy Slots</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="game-title">Galaxy Slots</div>
+      <button class="help-button" id="helpButton">?</button>
+    </header>
+
+    <main class="game">
+      <section class="status-panel">
+        <div class="status-item">
+          <span class="label">Balance</span>
+          <span class="value" id="balanceDisplay">$0</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Bet / Line</span>
+          <div class="control">
+            <button class="small-button" id="betDown">-</button>
+            <span class="value" id="betDisplay">$0</span>
+            <button class="small-button" id="betUp">+</button>
+          </div>
+        </div>
+        <div class="status-item">
+          <span class="label">Lines</span>
+          <div class="control">
+            <button class="small-button" id="linesDown">-</button>
+            <span class="value" id="linesDisplay">0</span>
+            <button class="small-button" id="linesUp">+</button>
+          </div>
+        </div>
+        <div class="status-item">
+          <span class="label">Last Win</span>
+          <span class="value" id="lastWinDisplay">$0</span>
+        </div>
+      </section>
+
+      <section class="slot-area">
+        <div class="reels" id="reels">
+          <div class="reel-column" data-col="0"></div>
+          <div class="reel-column" data-col="1"></div>
+          <div class="reel-column" data-col="2"></div>
+          <div class="reel-column" data-col="3"></div>
+          <div class="reel-column" data-col="4"></div>
+        </div>
+      </section>
+
+      <section class="controls">
+        <button class="primary-button" id="spinButton">SPIN</button>
+      </section>
+
+      <section class="message-panel">
+        <div id="messageText">Welcome to Galaxy Slots.</div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal">
+      <h2>How to Play</h2>
+      <p>Adjust your bet per line and number of active lines, then press Spin.</p>
+      <p>Wins are paid for matching symbols from the left across an active line.</p>
+      <p>Your balance is saved in this browser.</p>
+      <button class="primary-button" id="closeHelp">Close</button>
+    </div>
+  </div>
+
+  <script src="../wallet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

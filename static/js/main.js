@@ -5,6 +5,7 @@ import { setupAuthHandlers, setupUsernameHandlers } from './auth.js';
 import { initNowPlayingExpand, adjustHeaderHeight, adjustNowPlayingHeight } from './ui.js';
 import { loadQueue, performSearch } from './actions.js';
 import { debounce } from './utils.js';
+import * as audiostream from './audiostream.js';
 
 function adjustPlaylistBoxMaxHeights() {
     try {
@@ -57,6 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to initialize DOM elements');
         return;
     }
+    
+    // Initialize audio state persistence for cross-page navigation
+    audiostream.initializeAudioStatePersistence();
     
     initializeSocket();
     setupSocketHandlers();

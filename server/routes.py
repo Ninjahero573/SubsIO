@@ -31,11 +31,69 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/api/audio/<song_id>')
+@app.route('/gamehub/')
+def gamehub():
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    gamehub_dir = os.path.join(project_root, 'gamehub')
+    return send_from_directory(gamehub_dir, 'index.html')
+
+
+@app.route('/api/audio/<song_id>', methods=['GET', 'HEAD'])
 def get_audio(song_id):
     audio_file = os.path.join('downloads', f"{song_id}.mp3")
+    print(f"[Audio Request] Method: {request.method}, Song ID: {song_id}")
+    print(f"[Audio Request] Looking for file: {audio_file}")
+    
+    # Convert to absolute path
+    audio_file = os.path.abspath(audio_file)
+    print(f"[Audio Request] Absolute path: {audio_file}")
+    print(f"[Audio Request] File exists: {os.path.exists(audio_file)}")
+    
+    # If direct file doesn't exist, check if we have it cached under a different ID
+    if not os.path.exists(audio_file):
+        # Try to find the song in the queue manager's cache
+        # Get the video_id from current_song or queue
+        queue_data = queue_manager.get_queue()
+        song_data = None
+        
+        # Check current song
+        if queue_data.get('current') and queue_data['current'].get('id') == song_id:
+            song_data = queue_data['current']
+        else:
+            # Check queue
+            for song in queue_data.get('queue', []):
+                if song.get('id') == song_id:
+                    song_data = song
+                    break
+        
+        if song_data and song_data.get('video_id'):
+            cached_path = queue_manager.get_cached_path(song_data['video_id'])
+            if cached_path:
+                # Convert cached path to absolute
+                cached_path = os.path.abspath(cached_path)
+                if os.path.exists(cached_path):
+                    print(f"[Audio Request] Found cached file: {cached_path}")
+                    audio_file = cached_path
+    
     if os.path.exists(audio_file):
-        return send_file(audio_file, mimetype='audio/mpeg')
+        print(f"[Audio Request] Serving file, size: {os.path.getsize(audio_file)} bytes")
+        
+        # For HEAD requests, just return headers without body
+        if request.method == 'HEAD':
+            response = app.response_class(status=200)
+            response.headers['Content-Type'] = 'audio/mpeg'
+            response.headers['Content-Length'] = os.path.getsize(audio_file)
+            response.headers['Accept-Ranges'] = 'bytes'
+            return response
+        
+        return send_file(
+            audio_file, 
+            mimetype='audio/mpeg',
+            as_attachment=False,
+            conditional=True
+        )
+    
+    print(f"[Audio Request] File not found!")
     return jsonify({'error': 'Audio file not found'}), 404
 
 
@@ -704,3 +762,15 @@ def serve_repo_image(filename):
     if os.path.exists(file_path):
         return send_from_directory(images_dir, filename)
     return jsonify({'error': 'Image not found'}), 404
+
+
+# Serve gamehub static files (CSS, JS for games, etc)
+@app.route('/gamehub/<path:path>')
+def serve_gamehub(path):
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    gamehub_dir = os.path.join(project_root, 'gamehub')
+    file_path = os.path.join(gamehub_dir, path)
+    if os.path.exists(file_path) and file_path.startswith(os.path.abspath(gamehub_dir)):
+        return send_from_directory(gamehub_dir, path)
+    print(f"[GameHub] File not found: {file_path}")
+    return jsonify({'error': 'File not found'}), 404
