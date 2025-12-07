@@ -24,7 +24,10 @@
 .led-bar.active { animation: ledGlow 1s infinite; }
 @keyframes ledGlow { 0%,100%{ box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);}50%{ box-shadow: 0 0 20px rgba(139, 92, 246, 0.8);} }
 
-/* Persistent Now Playing Bar */
+/* Persistent player container - doesn't take up space in layout */
+#persistent-player-container {
+    display: contents;
+}
 .np-queue-panel { position: fixed; right: 12px; bottom: calc(var(--now-playing-height) + 12px); width: 520px; max-width: calc(100% - 48px); max-height: 64vh; background: linear-gradient(180deg, rgba(6,8,14,0.99), rgba(10,12,20,0.995)); border-radius: 12px; box-shadow: 0 16px 60px rgba(2,6,23,0.7); overflow: auto; padding: 10px; z-index: 1600; display: block; opacity: 0; transform: translateX(8px) scale(0.98); pointer-events: none; transition: transform 180ms cubic-bezier(.2,.9,.3,1), opacity 160ms ease-in-out; transform-origin: right bottom; }
 .np-queue-panel.open { opacity: 1; transform: translateX(0) scale(1); pointer-events: auto; }
 .np-queue-header { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.03); margin-bottom:6px; }

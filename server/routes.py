@@ -28,14 +28,16 @@ except Exception:
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('shell.html')
 
 
-@app.route('/gamehub/')
-def gamehub():
+# Games are now served through the shell via the games page content
+# Keeping this route for direct game folder access if needed (e.g., individual game URLs)
+@app.route('/gamehub/<path:filename>')
+def gamehub_static(filename):
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     gamehub_dir = os.path.join(project_root, 'gamehub')
-    return send_from_directory(gamehub_dir, 'index.html')
+    return send_from_directory(gamehub_dir, filename)
 
 
 @app.route('/api/audio/<song_id>', methods=['GET', 'HEAD'])
