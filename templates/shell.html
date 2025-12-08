@@ -19,17 +19,39 @@
 
     <!-- Main header (persists across all pages) -->
     <header>
-        <div id="connection-indicator" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status" aria-hidden="false">
-            <span class="indicator-dot connecting" aria-hidden="true"></span>
-            <span id="connection-text" class="connection-text connecting">Connecting...</span>
-            <span class="sr-only">Connection status</span>
-        </div>
 
         <div class="header-left">
+            {%- if '/gamehub' in request.path %}
+            <button id="back-btn" class="back-btn" aria-label="Back to Music" onclick="window.location.href='/'">← Back</button>
+            {%- endif %}
+        </div>
+
+        <div class="header-left-group">
             <h1 id="header-title" role="button" tabindex="0" style="cursor: pointer;">🎶 SubsIO 🎮</h1>
+            <div class="header-search">
+                <input type="text" id="header-search-input" placeholder="Search or add a song..." aria-label="Search or add a song">
+                <button id="header-search-btn" class="header-search-btn" aria-label="Search">
+                    <svg class="search-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6zM9.5 14A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- connection indicator moved here so it's to the right of the search, and part of the centered group -->
+            <div id="connection-indicator" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status" aria-hidden="false">
+                <span class="indicator-dot connecting" aria-hidden="true"></span>
+                <span id="connection-text" class="connection-text connecting">Connecting...</span>
+                <span class="sr-only">Connection status</span>
+            </div>
         </div>
 
         <div class="header-controls">
+            <!-- duplicate connection indicator for mobile: hidden on desktop, visible on small screens -->
+            <div id="connection-indicator-mobile" class="connection-indicator connecting" aria-live="polite" aria-label="Connection status" aria-hidden="false">
+                <span class="indicator-dot connecting" aria-hidden="true"></span>
+                <span id="connection-text-mobile" class="connection-text connecting">Connecting...</span>
+                <span class="sr-only">Connection status</span>
+            </div>
             <button id="hamburger-btn" class="hamburger-btn" aria-label="Open menu" aria-expanded="false" aria-controls="site-menu">☰</button>
         </div>
     </header>
@@ -97,5 +119,28 @@
     </div>
 
     <script type="module" src="{{ url_for('static', filename='js/shell.js') }}"></script>
+    <script>
+        // Ensure a back button exists on client-side when on /gamehub pages
+        (function(){
+            try {
+                var path = window.location.pathname || '';
+                if (path.indexOf('/gamehub') !== -1) {
+                    // If server didn't render a back button, create one
+                    if (!document.getElementById('back-btn')) {
+                        var headerLeft = document.querySelector('.header-left');
+                        if (headerLeft) {
+                            var btn = document.createElement('button');
+                            btn.id = 'back-btn';
+                            btn.className = 'back-btn';
+                            btn.setAttribute('aria-label','Back to Music');
+                            btn.textContent = '\u2190 Back';
+                            btn.addEventListener('click', function(e){ e.preventDefault(); history.back(); });
+                            headerLeft.appendChild(btn);
+                        }
+                    }
+                }
+            } catch (e) { /* fail silently */ }
+        })();
+    </script>
 </body>
 </html>

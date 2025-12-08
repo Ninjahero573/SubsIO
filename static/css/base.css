@@ -71,6 +71,33 @@ header {
 .header-left { justify-self: start; text-align: left; display: flex; align-items: center; gap: 12px; }
 
 .header-controls { justify-self: end; display: flex; align-items: center; gap: 8px; }
+/* Hide any connection indicator placed inside header-controls by default (we show the one inside the left group on desktop) */
+.header-controls .connection-indicator { display: none; }
+
+/* Centered header group: title + search + connection indicator */
+.header-left-group {
+    grid-column: 2; /* place into the center column of the header grid */
+    justify-self: center;
+    display: grid;
+    grid-template-columns: auto 640px auto; /* title | search | indicator (doubled width) */
+    align-items: center;
+    gap: 6px; /* tighten spacing between title, search, and indicator */
+    /* slight visual nudge left to correct optical centering on many displays */
+    transform: translateX(-60px); 
+    /* keep transform hardware-accelerated and smooth */
+    will-change: transform;
+}
+
+/* Ensure the right-most controls sit in the third column of the outer header grid */
+.header-controls { grid-column: 3; }
+
+/* Search styling for header: the search sits in the middle column (320px) */
+.header-search { display: inline-flex; align-items: center; gap: 6px; width: 100%; justify-self: center; }
+#header-search-input { flex: 0 0 640px; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); }
+.header-search-btn { background: transparent; border: none; color: var(--text-primary); padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+
+/* Reduce extra margin on the pill so it sits close to the search */
+.connection-indicator { margin-left: 0; }
 
 header > h1 { justify-self: center; margin: 0; }
 
@@ -211,8 +238,32 @@ h2, h3 { margin-top: 0; }
     .header-left h1, header h1 { font-size: 1.25rem; line-height: 1.05; margin-bottom: 2px; }
     .header-left .subtitle, header .subtitle { font-size: 0.9rem; margin-top: 0; display: none; }
     .connection-text { display: none; }
-    .connection-indicator { border: none; left: 8px; }
+    .connection-indicator { border: none; left: 8px; margin-left: 8px; }
     .hamburger-btn { font-size: 1.25rem; padding: 8px 10px; }
+
+     /* Disable the desktop nudge and make the center column fluid so the search shrinks on small screens.
+         On mobile we center the title and move the visible connection indicator into the right controls
+         (we hide the left indicator). */
+     .header-left-group {
+          transform: none;
+          grid-column: 2; /* keep title in the center column */
+          justify-self: center; /* center the group */
+          grid-template-columns: auto; /* just the title (search hidden) */
+          gap: 8px;
+          align-items: center;
+          width: auto;
+          padding-left: 0;
+     }
+
+     /* Hide the left-side connection indicator on mobile (we have a mobile copy in header-controls) */
+     .header-left-group .connection-indicator { display: none; }
+
+     /* Hide the search input on mobile */
+     .header-search { display: none !important; }
+
+     /* Show the connection indicator that lives inside header-controls on mobile */
+     .header-controls { grid-column: 3; }
+     .header-controls .connection-indicator { display: inline-flex; margin-left: 0; }
 }
 
 /* Hamburger button (right-most control) */
@@ -231,6 +282,21 @@ h2, h3 { margin-top: 0; }
 }
 .hamburger-btn:hover { background: rgba(255,255,255,0.03); }
 .hamburger-btn:focus { outline: 2px solid rgba(99,102,241,0.24); outline-offset: 2px; }
+
+/* Back button used on gamehub pages */
+.back-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1rem;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.back-btn:hover { background: rgba(255,255,255,0.03); }
 
 /* Optional site menu that can be toggled by the hamburger */
 /* site menu: styled similarly to the queue panel (top-right popup) */
