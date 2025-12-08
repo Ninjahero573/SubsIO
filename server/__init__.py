@@ -5,9 +5,9 @@ import os
 from flask import Flask
 from flask_socketio import SocketIO
 
-from queue_manager import QueueManager
-from audio_analyzer import AudioAnalyzer
-from light_show_generator import LightShowGenerator
+from workers.queue_manager import QueueManager
+from workers.audio_analyzer import AudioAnalyzer
+from workers.light_show_generator import LightShowGenerator
 
 # Determine project root and set template/static folders so templates and
 # static assets located at the repository root are found even though the

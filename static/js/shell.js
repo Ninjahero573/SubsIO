@@ -108,9 +108,50 @@ function closeMenu() {
     }
 }
 
-async function loadPageContent(page) {
+async function loadPageContent(page, gameUrl = null) {
     try {
         console.log(`[Shell] Loading page: ${page}`);
+        
+        // Handle game loading
+        if (page === 'game' && gameUrl) {
+            console.log(`[Shell] Loading game: ${gameUrl}`);
+            
+            const html = await fetch('/static/partials/game-player.html').then(r => r.text());
+            pageContainer.innerHTML = html;
+            
+            // Add game mode class to body
+            document.body.classList.add('game-mode');
+            
+            const gameFrame = document.getElementById('gameFrame');
+            if (gameFrame) {
+                gameFrame.src = gameUrl;
+            }
+            
+            // Make now-playing bar minimal in game mode
+            const nowPlayingBar = document.getElementById('now-playing-bar');
+            if (nowPlayingBar) {
+                nowPlayingBar.classList.add('minimal');
+            }
+            
+            // Setup exit button
+            const exitBtn = document.getElementById('exitGameBtn');
+            if (exitBtn) {
+                exitBtn.addEventListener('click', async () => {
+                    document.body.classList.remove('game-mode');
+                    await loadPageContent('games');
+                });
+            }
+            
+            currentPage = 'game';
+            return;
+        }
+        
+        // Reset now-playing bar styling and remove game mode
+        document.body.classList.remove('game-mode');
+        const nowPlayingBar = document.getElementById('now-playing-bar');
+        if (nowPlayingBar) {
+            nowPlayingBar.classList.remove('minimal');
+        }
         
         let contentUrl;
         if (page === 'main') {
@@ -243,3 +284,4 @@ function setupMenuNavigation() {
 // Expose for debugging
 window._shellCurrentPage = () => currentPage;
 window._shellLoadPage = (page) => loadPageContent(page);
+window._shellLoadGame = (gameUrl) => loadPageContent('game', gameUrl);

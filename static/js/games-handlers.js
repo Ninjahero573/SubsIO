@@ -11,7 +11,20 @@ let gameState = {
 };
 
 export function setupGamesMenuHandlers() {
-    // Menu is handled by shell, nothing needed here
+    // Setup game card clicks to load games in the shell
+    const gameCards = document.querySelectorAll('.game-card:not(.coming-soon)');
+    gameCards.forEach(card => {
+        card.addEventListener('click', (e) => {
+            e.preventDefault();
+            const href = card.getAttribute('href');
+            if (href) {
+                // Import loadPageContent from shell - this will be set as a global
+                if (window._shellLoadGame) {
+                    window._shellLoadGame(href);
+                }
+            }
+        });
+    });
 }
 
 export function setupGamesMediaControlHandlers() {

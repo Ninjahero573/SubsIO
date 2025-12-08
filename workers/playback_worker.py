@@ -14,9 +14,9 @@ import pygame
 
 from flask_socketio import SocketIO
 
-from queue_manager import QueueManager
-from audio_analyzer import AudioAnalyzer
-from light_show_generator import LightShowGenerator
+from workers.queue_manager import QueueManager
+from workers.audio_analyzer import AudioAnalyzer
+from workers.light_show_generator import LightShowGenerator
 
 
 def play_audio_with_sync(

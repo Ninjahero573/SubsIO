@@ -143,27 +143,52 @@
     color: #ffffff;
     position: relative;
     overflow: hidden;
+    transition: all 200ms ease;
 }
 
-.bento-item.bento-games::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
-    transition: left 0.3s ease;
-}
-
-.bento-item.bento-games:hover::before,
-.bento-item.bento-games:focus::before {
-    left: 100%;
+.bento-item.bento-games:hover,
+.bento-item.bento-games:focus {
+    background: linear-gradient(135deg, #7c7ffa 0%, #af6dff 100%);
+    box-shadow: 0 12px 36px rgba(99, 102, 241, 0.25);
 }
 
 .bento-games .games-emoji {
     font-size: 2.5rem;
     display: block;
+}
+
+/* Search button subtle hover effect */
+#bento-search {
+    transition: all 200ms ease;
+}
+
+#bento-search:hover,
+#bento-search:focus {
+    background: var(--bg-input);
+    border-color: var(--primary-color);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+}
+
+/* YouTube button subtle hover effect */
+.bento-item.youtube-login-btn {
+    transition: all 200ms ease;
+}
+
+.bento-item.youtube-login-btn:hover,
+.bento-item.youtube-login-btn:focus {
+    box-shadow: 0 10px 32px rgba(255, 0, 0, 0.2);
+    filter: brightness(1.1);
+}
+
+/* Spotify button subtle hover effect */
+.bento-item.spotify-login-btn {
+    transition: all 200ms ease;
+}
+
+.bento-item.spotify-login-btn:hover,
+.bento-item.spotify-login-btn:focus {
+    box-shadow: 0 10px 32px rgba(29, 185, 84, 0.25);
+    filter: brightness(1.1);
 }
 
 .bento-item.spotify-link:focus, .bento-item.spotify-login-btn:focus { outline: none; box-shadow: 0 8px 24px rgba(29,185,84,0.18); }

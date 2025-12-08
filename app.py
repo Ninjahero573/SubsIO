@@ -8,7 +8,7 @@ and socket handlers live in the `server` package to keep concerns separated.
 import os
 import threading
 from server import app, socketio, queue_manager, audio_analyzer, light_show_generator, playback_state, connected_clients
-from playback_worker import process_and_play_queue, prefetch_queue_worker
+from workers.playback_worker import process_and_play_queue, prefetch_queue_worker
 
 
 def ensure_dirs():
