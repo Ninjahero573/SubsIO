@@ -123,16 +123,56 @@
 .bento-item:focus, .bento-item:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(2,6,23,0.5); }
 .bento-icon { width: 56px; height: 56px; color: var(--primary-color); }
 .bento-label { font-size: 1.08rem; font-weight: 800; text-align: center; color: var(--text-primary); line-height: 1.05; }
-.bento-item .youtube-logo { width: 48px; height: 36px; }
+.bento-item .youtube-logo { width: 100px; height: 100px; }
 
-.bento-item.youtube-login-btn { background: transparent; border: none; color: #fff; position: relative; padding: 0px; align-items: center; justify-content: center; overflow: hidden; border-radius: 12px; }
+.bento-item.youtube-login-btn { 
+    background: transparent; 
+    border: none; 
+    color: #fff; 
+    position: relative; 
+    padding: 0px; 
+    overflow: hidden; 
+    border-radius: 12px; 
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+}
 .bento-item.spotify-link,
-.bento-item.spotify-login-btn { background: #1DB954; border: none; color: #fff; position: relative; padding: 0px; align-items: center; justify-content: center; overflow: hidden; border-radius: 12px; }
+.bento-item.spotify-login-btn { 
+    background: #1DB954; 
+    border: none; 
+    color: #fff; 
+    position: relative; 
+    padding: 0px; 
+    overflow: hidden; 
+    border-radius: 12px; 
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+}
 .bento-item.spotify-link .spotify-logo, .bento-item.spotify-link .bento-icon,
 .bento-item.spotify-login-btn .spotify-logo, .bento-item.spotify-login-btn .bento-icon { width: 40px; height: 40px; display: block; }
 .bento-item.spotify-link .spotify-img, .bento-item.spotify-link img.spotify-img,
-.bento-item.spotify-login-btn .spotify-img, .bento-item.spotify-login-btn img.spotify-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
-.bento-item.youtube-login-btn .youtube-img, .bento-item.youtube-login-btn img.youtube-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+.bento-item.spotify-login-btn .spotify-img, .bento-item.spotify-login-btn img.spotify-img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    display: block; 
+    border-radius: inherit;
+    flex: 1 1 auto;
+}
+.bento-item.youtube-login-btn .youtube-img, .bento-item.youtube-login-btn img.youtube-img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    display: block; 
+    border-radius: inherit;
+    flex: 1 1 auto;
+}
 .bento-item.spotify-link .spotify-logo, .bento-item.spotify-login-btn .spotify-logo { display: block; width: 44px; height: 44px; }
 .bento-item.spotify-link .spotify-logo path, .bento-item.spotify-login-btn .spotify-logo path { fill: none; stroke: #ffffff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; shape-rendering: geometricPrecision; }
 
@@ -284,3 +324,23 @@
 	filter: brightness(0.95);
 }
 
+/* Primary button comprehensive styles */
+.primary-btn, button[type="submit"] { 
+    width: 100%; 
+    padding: 15px; 
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); 
+    border: none; 
+    border-radius: 10px; 
+    color: white; 
+    font-size: 1.1em; 
+    font-weight: bold; 
+    cursor: pointer; 
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.primary-btn:hover, button[type="submit"]:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); 
+}
+.primary-btn:active, button[type="submit"]:active { 
+    transform: translateY(0); 
+}

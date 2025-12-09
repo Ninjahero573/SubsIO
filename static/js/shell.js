@@ -12,9 +12,41 @@ import { loadQueue, performSearch } from './actions.js';
 import { debounce } from './utils.js';
 import * as audiostream from './audiostream.js';
 import { setupGamesMenuHandlers, setupGamesMediaControlHandlers, setupGamesAudioStreamHandlers, setupGamesWalletHandlers } from './games-handlers.js';
+import { initBackButton, updateBackBtn } from './back-button.js';
 
 const pageContainer = document.getElementById('page-container');
 let currentPage = 'main';
+
+// Show welcome modal on first visit
+function initWelcomeModal() {
+    const hasVisited = localStorage.getItem('hasVisitedBefore');
+    const welcomeModal = document.getElementById('welcome-modal');
+    const welcomeClose = document.getElementById('welcome-close');
+    const welcomeStart = document.getElementById('welcome-start');
+    
+    if (!hasVisited && welcomeModal) {
+        // Mark as visited
+        localStorage.setItem('hasVisitedBefore', 'true');
+        
+        // Show modal
+        welcomeModal.classList.remove('hidden');
+        
+        // Close handlers
+        const closeWelcome = () => {
+            welcomeModal.classList.add('hidden');
+        };
+        
+        if (welcomeClose) welcomeClose.addEventListener('click', closeWelcome);
+        if (welcomeStart) welcomeStart.addEventListener('click', closeWelcome);
+        
+        // Close on backdrop click
+        welcomeModal.addEventListener('click', (e) => {
+            if (e.target === welcomeModal) closeWelcome();
+        });
+    } else if (welcomeModal) {
+        welcomeModal.classList.add('hidden');
+    }
+}
 
 // Initialize the shell once on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -23,6 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('[Shell] now-playing-bar element:', document.getElementById('now-playing-bar'));
     
     console.log('[Shell] Initializing application shell...');
+    
+    // Show welcome modal if first visit
+    initWelcomeModal();
     
     // Initialize persistent elements (header, player bar, etc.)
     initializePersistentElements();
@@ -43,16 +78,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize now-playing expand
     initNowPlayingExpand();
     
+    // Initialize back button for gamehub navigation
+    initBackButton();
+    
     // Adjust layout
     adjustHeaderHeight();
     adjustNowPlayingHeight();
     
     console.log('[Shell] Application shell initialized');
     
-    // Load the main page content
-    console.log('[Shell] About to load main page content...');
-    await loadPageContent('main');
-    console.log('[Shell] Main page content loaded');
+    // Load the last visited page from localStorage, or default to 'main'
+    const lastPage = localStorage.getItem('lastVisitedPage') || 'main';
+    console.log('[Shell] About to load page:', lastPage);
+    await loadPageContent(lastPage);
+    console.log('[Shell] Page content loaded');
     
     // Setup menu navigation
     setupMenuNavigation();
@@ -91,6 +130,40 @@ function initializePersistentElements() {
     }
     
     console.log('[Shell] Persistent elements initialized');
+
+    // Delegated click handling on the page container to ensure handlers work after dynamic loads
+    if (pageContainer) {
+        pageContainer.addEventListener('click', async (e) => {
+            const tile = e.target.closest && e.target.closest('.main-tile');
+            if (tile) {
+                const target = tile.getAttribute('data-target');
+                if (target) {
+                    if (window._shellLoadPage) await window._shellLoadPage(target);
+                    return;
+                }
+            }
+
+            const bentoGames = e.target.closest && e.target.closest('#bento-games');
+            if (bentoGames) {
+                await loadPageContent('games');
+                return;
+            }
+        }, { capture: false });
+    }
+    // Keyboard activation for delegated tiles (Enter / Space)
+    if (pageContainer) {
+        pageContainer.addEventListener('keydown', async (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const tile = e.target.closest && e.target.closest('.main-tile');
+            if (tile) {
+                e.preventDefault();
+                const target = tile.getAttribute('data-target');
+                if (target && window._shellLoadPage) {
+                    await window._shellLoadPage(target);
+                }
+            }
+        }, { capture: false });
+    }
 }
 
 async function handleHeaderClick() {
@@ -156,6 +229,8 @@ async function loadPageContent(page, gameUrl = null) {
         let contentUrl;
         if (page === 'main') {
             contentUrl = '/static/partials/main-page.html';
+        } else if (page === 'music') {
+            contentUrl = '/static/partials/music-page.html';
         } else if (page === 'games') {
             contentUrl = '/static/partials/games-page.html';
         } else {
@@ -178,8 +253,14 @@ async function loadPageContent(page, gameUrl = null) {
         pageContainer.innerHTML = html;
         currentPage = page;
         
+        // Save the current page to localStorage so it persists across refreshes
+        localStorage.setItem('lastVisitedPage', page);
+        
         console.log(`[Shell] Page content loaded: ${page}`);
         console.log(`[Shell] page-container innerHTML length: ${pageContainer.innerHTML.length}`);
+        
+        // Update back button visibility based on current page
+        updateBackBtn(currentPage);
         
         // Now setup page-specific handlers
         await setupPageHandlers(page);
@@ -218,6 +299,16 @@ async function setupPageHandlers(page) {
         setupBentoHandlers();
         setupAuthHandlers();
         setupUsernameHandlers();
+
+        // Load main-page-specific behavior (tiles) dynamically and explicitly initialize
+        try {
+            const mod = await import('./main-page.js');
+            if (mod && typeof mod.initMainTiles === 'function') {
+                mod.initMainTiles();
+            }
+        } catch (err) {
+            console.warn('[Shell] Failed to import or init main-page.js', err);
+        }
         
         // Setup games button to navigate
         const gamesBtn = document.getElementById('bento-games');
@@ -248,6 +339,50 @@ async function setupPageHandlers(page) {
             adjustHeaderHeight();
             adjustNowPlayingHeight();
         }, 100);
+    } else if (page === 'music') {
+        // Initialize page-specific elements for music page (same IDs as prior main page bento/search)
+        elements.songForm = document.getElementById('add-song-form');
+        elements.songUrlInput = document.getElementById('song-or-search');
+        elements.addedByInput = document.getElementById('added-by');
+        elements.currentUserSpan = document.getElementById('current-user');
+        elements.changeNameBtn = document.getElementById('change-name-btn');
+        elements.clearNameBtn = document.getElementById('clear-name-btn');
+        elements.youtubeLoginBtn = document.getElementById('youtube-login-btn');
+        elements.spotifyLoginBtn = document.getElementById('spotify-login-btn');
+        elements.ytPlaylistsDiv = document.getElementById('yt-playlists');
+        elements.ytPlaylistItemsDiv = document.getElementById('yt-playlist-items');
+        elements.ytPlaylistsPanel = document.getElementById('youtube-playlists-panel');
+        elements.spPlaylistsDiv = document.getElementById('sp-playlists');
+        elements.spPlaylistItemsDiv = document.getElementById('sp-playlist-tracks');
+        elements.searchInput = elements.songUrlInput;
+        elements.searchStatus = document.getElementById('search-status');
+        elements.searchResultsDiv = document.getElementById('search-results');
+        elements.linkResultsDiv = document.getElementById('link-results');
+        elements.searchMoreBtn = document.getElementById('search-more-btn');
+
+        // Setup music page specific handlers (search, bento actions, auth)
+        setupFormHandler();
+        setupSearchHandlers();
+        setupBentoHandlers();
+        setupAuthHandlers();
+        setupUsernameHandlers();
+
+        // Setup games button to navigate
+        const gamesBtn2 = document.getElementById('bento-games');
+        if (gamesBtn2) {
+            gamesBtn2.addEventListener('click', async () => {
+                await loadPageContent('games');
+            });
+        }
+
+        // Request initial queue
+        loadQueue();
+
+        // Adjust heights after content loads
+        setTimeout(() => {
+            adjustHeaderHeight();
+            adjustNowPlayingHeight();
+        }, 100);
     }
 }
 
@@ -261,8 +396,8 @@ function setupMenuNavigation() {
     if (menuMain) {
         menuMain.addEventListener('click', async () => {
             closeMenu();
-            if (currentPage !== 'main') {
-                await loadPageContent('main');
+            if (currentPage !== 'music') {
+                await loadPageContent('music');
             }
         });
     }

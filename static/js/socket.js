@@ -363,12 +363,22 @@ function showPresencePopup(users, loading = false) {
         if (elements.connectionIndicator) {
             const rect = elements.connectionIndicator.getBoundingClientRect();
             const top = rect.bottom + 8;
-            const left = Math.min(window.innerWidth - 12 - popup.offsetWidth, Math.max(8, rect.left));
             popup.style.position = 'fixed';
-            popup.style.right = 'auto';
             popup.style.bottom = 'auto';
-            popup.style.left = `${left}px`;
-            popup.style.top = `${top}px`;
+
+            // On small screens, anchor the popup to the right of the indicator
+            if (window.innerWidth <= 600) {
+                const distanceFromRight = Math.max(12, Math.round(window.innerWidth - rect.right));
+                popup.style.right = `${distanceFromRight}px`;
+                popup.style.left = 'auto';
+                // prefer a top value but ensure it doesn't go off-screen
+                popup.style.top = `${Math.min(window.innerHeight - 12, top)}px`;
+            } else {
+                const left = Math.min(window.innerWidth - 12 - popup.offsetWidth, Math.max(8, rect.left));
+                popup.style.right = 'auto';
+                popup.style.left = `${left}px`;
+                popup.style.top = `${top}px`;
+            }
         } else {
             popup.style.position = 'fixed';
             popup.style.left = 'auto';

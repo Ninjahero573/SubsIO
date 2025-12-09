@@ -68,33 +68,29 @@ header {
     border-radius: 0; /* remove rounded corners so it reads as a full-width bar */
 }
 
-.header-left { justify-self: start; text-align: left; display: flex; align-items: center; gap: 12px; }
+.header-left { justify-self: start; text-align: left; display: flex; align-items: center; gap: 12px; position: relative; z-index: 30; }
 
-.header-controls { justify-self: end; display: flex; align-items: center; gap: 8px; }
-/* Hide any connection indicator placed inside header-controls by default (we show the one inside the left group on desktop) */
-.header-controls .connection-indicator { display: none; }
+.header-controls { justify-self: end; display: flex; align-items: center; gap: 8px; padding-right: 16px; }
+/* Show connection indicator inside right controls on desktop */
+.header-controls .connection-indicator { display: inline-flex; align-items: center; gap: 8px; margin-right: 6px; }
 
-/* Centered header group: title + search + connection indicator */
+/* Centered header group: title + connection indicator */
 .header-left-group {
     grid-column: 2; /* place into the center column of the header grid */
     justify-self: center;
-    display: grid;
-    grid-template-columns: auto 640px auto; /* title | search | indicator (doubled width) */
+    display: flex;
     align-items: center;
-    gap: 6px; /* tighten spacing between title, search, and indicator */
-    /* slight visual nudge left to correct optical centering on many displays */
-    transform: translateX(-60px); 
-    /* keep transform hardware-accelerated and smooth */
-    will-change: transform;
+    justify-content: center;
+    gap: 12px;
 }
 
 /* Ensure the right-most controls sit in the third column of the outer header grid */
 .header-controls { grid-column: 3; }
 
-/* Search styling for header: the search sits in the middle column (320px) */
-.header-search { display: inline-flex; align-items: center; gap: 6px; width: 100%; justify-self: center; }
-#header-search-input { flex: 0 0 640px; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); }
-.header-search-btn { background: transparent; border: none; color: var(--text-primary); padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+/* Search styling for header: hidden since search moved out of header */
+.header-search { display: none !important; }
+#header-search-input { display: none !important; }
+.header-search-btn { display: none !important; }
 
 /* Reduce extra margin on the pill so it sits close to the search */
 .connection-indicator { margin-left: 0; }
@@ -238,65 +234,83 @@ h2, h3 { margin-top: 0; }
     .header-left h1, header h1 { font-size: 1.25rem; line-height: 1.05; margin-bottom: 2px; }
     .header-left .subtitle, header .subtitle { font-size: 0.9rem; margin-top: 0; display: none; }
     .connection-text { display: none; }
-    .connection-indicator { border: none; left: 8px; margin-left: 8px; }
-    .hamburger-btn { font-size: 1.25rem; padding: 8px 10px; }
+    .connection-indicator { border: none; }
+    .hamburger-btn { font-size: 1rem; }
 
-     /* Disable the desktop nudge and make the center column fluid so the search shrinks on small screens.
-         On mobile we center the title and move the visible connection indicator into the right controls
-         (we hide the left indicator). */
-     .header-left-group {
-          transform: none;
-          grid-column: 2; /* keep title in the center column */
-          justify-self: center; /* center the group */
-          grid-template-columns: auto; /* just the title (search hidden) */
-          gap: 8px;
-          align-items: center;
-          width: auto;
-          padding-left: 0;
-     }
+    /* Center the title and indicator on mobile */
+    .header-left-group {
+        transform: none;
+        grid-column: 2;
+        justify-self: center;
+        gap: 8px;
+    }
 
-     /* Hide the left-side connection indicator on mobile (we have a mobile copy in header-controls) */
-     .header-left-group .connection-indicator { display: none; }
-
-     /* Hide the search input on mobile */
-     .header-search { display: none !important; }
-
-     /* Show the connection indicator that lives inside header-controls on mobile */
-     .header-controls { grid-column: 3; }
-     .header-controls .connection-indicator { display: inline-flex; margin-left: 0; }
+    /* Right controls stay on the right */
+    .header-controls { grid-column: 3; }
 }
+     .header-controls .connection-indicator { display: inline-flex; margin-left: 0; }
 
-/* Hamburger button (right-most control) */
 .hamburger-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    font-size: 1.35rem;
-    line-height: 1;
-    padding: 8px 10px;
-    border-radius: 8px;
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-secondary);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    z-index: 40;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    opacity: 0.6;
 }
-.hamburger-btn:hover { background: rgba(255,255,255,0.03); }
+.hamburger-btn:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+.hamburger-btn:active {
+    opacity: 0.8;
+}
+
+/* Ensure hamburger SVG image fills the button and inherits color like the back button */
+.hamburger-btn img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
 .hamburger-btn:focus { outline: 2px solid rgba(99,102,241,0.24); outline-offset: 2px; }
+.hamburger-btn:active { opacity: 0.8; }
+.hamburger-btn:active { opacity: 0.8; }
 
 /* Back button used on gamehub pages */
 .back-btn {
     background: transparent;
     border: none;
-    color: var(--text-primary);
-    font-size: 1rem;
-    padding: 8px 10px;
-    border-radius: 8px;
+    color: var(--text-secondary);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    z-index: 40;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    opacity: 0.6;
 }
-.back-btn:hover { background: rgba(255,255,255,0.03); }
+.back-btn img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.back-btn:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+.back-btn:active {
+    opacity: 0.8;
+}
 
 /* Optional site menu that can be toggled by the hamburger */
 /* site menu: styled similarly to the queue panel (top-right popup) */
@@ -329,3 +343,208 @@ body.menu-open { --menu-open: 1; }
 .site-menu-list { display:flex; flex-direction:column; gap:8px; padding:4px; }
 .site-menu-item { text-align:left; background: rgba(255,255,255,0.02); color:var(--text-primary); border:1px solid rgba(255,255,255,0.02); padding:10px; border-radius:8px; cursor:pointer; }
 .site-menu-item:hover { background: rgba(255,255,255,0.04); }
+
+/* Main tiles (large bento-style entry tiles) */
+.main-tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 18px 0 28px 0;
+    align-items: stretch;
+}
+.main-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 10px;
+    padding: 36px 32px;
+    /* stronger, less transparent surface to improve contrast against animated background */
+    background: linear-gradient(180deg, rgba(12,16,28,0.78), rgba(18,22,36,0.74));
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: transform 180ms cubic-bezier(.2,.9,.3,1), box-shadow 180ms ease, background 140ms ease;
+    color: var(--text-primary);
+    text-align: left;
+    min-height: 140px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.main-tile:hover, .main-tile:focus {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 36px 90px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(68,63,255,0.80), rgba(120,72,200,0.75));
+    border-color: rgba(99,102,241,0.85);
+}
+.main-tile:focus { outline: 3px solid rgba(99,102,241,0.14); outline-offset: 6px; }
+.main-tile .tile-icon { font-size: 48px; line-height: 1; }
+.main-tile .tile-label { font-size: 1.9rem; font-weight: 800; margin-top: 6px; }
+.main-tile .tile-sub { color: var(--text-secondary); font-size: 1rem; margin-top: 6px; }
+
+@media (max-width: 800px) {
+    .main-tiles { grid-template-columns: 1fr; }
+}
+
+/* Welcome modal styles */
+.welcome-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    opacity: 1;
+    transition: opacity 300ms ease;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+.welcome-modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.welcome-modal-content {
+    background: linear-gradient(180deg, rgba(30,41,59,0.98), rgba(15,23,42,0.96));
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    width: calc(100% - 40px);
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 32px 80px rgba(2,6,23,0.8);
+    position: relative;
+    animation: welcomeIn 400ms cubic-bezier(.2,.9,.3,1);
+}
+@keyframes welcomeIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.welcome-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 180ms ease;
+}
+.welcome-close:hover {
+    color: var(--text-primary);
+}
+.welcome-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+.welcome-emoji {
+    font-size: 3.5rem;
+    margin-bottom: 12px;
+    display: block;
+}
+.welcome-header h2 {
+    margin: 0;
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.welcome-body {
+    margin-bottom: 28px;
+}
+.welcome-body > p {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-bottom: 24px;
+}
+.welcome-features {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.welcome-feature {
+    display: flex;
+    gap: 14px;
+    padding: 14px;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.15);
+    border-radius: 12px;
+    transition: all 180ms ease;
+}
+.welcome-feature:hover {
+    background: rgba(99,102,241,0.12);
+    border-color: rgba(99,102,241,0.25);
+}
+.feature-icon {
+    font-size: 2rem;
+    min-width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.welcome-feature strong {
+    display: block;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    font-size: 1.05rem;
+}
+.welcome-feature p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin: 0;
+    line-height: 1.4;
+}
+.welcome-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 12px 32px rgba(99,102,241,0.25);
+    transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.welcome-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 48px rgba(99,102,241,0.35);
+}
+.welcome-btn:active {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+    .welcome-modal-content {
+        padding: 28px 20px;
+        max-width: calc(100% - 20px);
+        border-radius: 16px;
+    }
+    .welcome-header h2 {
+        font-size: 1.6rem;
+    }
+    .welcome-emoji {
+        font-size: 2.5rem;
+    }
+    .welcome-feature {
+        gap: 10px;
+        padding: 12px;
+    }
+    .feature-icon {
+        font-size: 1.8rem;
+        min-width: 40px;
+    }
+}
+

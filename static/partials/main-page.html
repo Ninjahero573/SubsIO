@@ -1,95 +1,16 @@
 <!-- Bento card: quick actions + playlists grouped together -->
-<div class="bento-card">
-    <!-- Bento menu: quick actions including YouTube sign-in -->
-    <div class="bento-grid" role="list" aria-label="Quick actions">
-    <button class="bento-item" id="bento-search" type="button" role="listitem" aria-label="Search or add a song">
-        <svg class="bento-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6zM9.5 14A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
-        </svg>
-        <div class="bento-label">Search / Add</div>
+<!-- Main tiles: large entry tiles for Music and Games -->
+<section class="main-tiles" aria-label="Main navigation tiles">
+    <button class="main-tile" data-target="music" aria-label="Open Music">
+        <div class="tile-icon">🎶</div>
+        <div class="tile-label">Music</div>
+        <div class="tile-sub">Playlists, Search, Queue</div>
     </button>
 
-    <button class="bento-item youtube-login-btn" id="youtube-login-btn" role="listitem" aria-label="Sign in with YouTube" title="Sign in with YouTube">
-        <img class="youtube-img" src="/images/youtube.jpg" alt="YouTube">
+    <button class="main-tile" data-target="games" aria-label="Open Games">
+        <div class="tile-icon">🎮</div>
+        <div class="tile-label">Games</div>
+        <div class="tile-sub">Arcade, High Scores</div>
     </button>
-
-    <button class="bento-item spotify-login-btn" id="spotify-login-btn" role="listitem" aria-label="Sign in with Spotify" title="Sign in with Spotify">
-        <!-- Use shipped image asset for Spotify logo -->
-        <img class="spotify-img" src="/images/spotify.jpg" alt="Spotify" />
-    </button>
-
-    <button class="bento-item bento-games" id="bento-games" role="listitem" aria-label="Open games arcade" title="Open games arcade">
-        <div class="bento-icon games-emoji">🎮</div>
-        <div class="bento-label">Games</div>
-    </button>
-    </div>
-
-    <!-- YouTube Playlists Panel (grouped with bento) -->
-    <section id="youtube-playlists-panel" class="youtube-panel">
-        <div class="yt-column">
-            <h3>Your Playlists</h3>
-            <div id="yt-playlists" class="yt-playlists">
-                <div class="empty-state"><p>Sign in to YouTube to view playlists.</p></div>
-            </div>
-        </div>
-        <div class="yt-column">
-            <h3>Playlist Items</h3>
-            <div id="yt-playlist-items" class="yt-playlist-items">
-                <div class="empty-state"><p>Select a playlist to see songs.</p></div>
-            </div>
-        </div>
-    </section>
-    <!-- Spotify Playlists Panel -->
-    <section id="spotify-playlists-panel" class="spotify-panel">
-        <div class="yt-column">
-            <h3>Your Spotify Playlists</h3>
-            <div id="sp-playlists" class="sp-playlists">
-                <div class="empty-state"><p>Sign in to Spotify to view playlists.</p></div>
-            </div>
-        </div>
-        <div class="yt-column">
-            <h3>Playlist Tracks</h3>
-            <div id="sp-playlist-tracks" class="sp-playlist-tracks">
-                <div class="empty-state"><p>Select a playlist to see tracks.</p></div>
-            </div>
-        </div>
-    </section>
-</div>
-
-
-
-<section class="add-song-section">
-    <h2>Add a song to the queue!</h2>
-    <form id="add-song-form">
-        <div class="form-group">
-            <input 
-                type="text" 
-                id="song-or-search" 
-                placeholder="Paste YouTube URL or enter a search term..."
-            >
-            <div id="link-results" class="search-results"></div>
-            <div id="search-status" class="search-status"></div>
-            <div id="search-results" class="search-results"></div>
-            <button id="search-more-btn" type="button" class="search-more-btn" style="display: none;">Load More Results</button>
-        </div>
-        <div class="form-group">
-            <input 
-                type="text" 
-                id="added-by" 
-                placeholder="Your name (optional)"
-                maxlength="50"
-            >
-        </div>
-        <div class="form-group user-settings">
-            <span id="current-user" class="user-pill">Name: <strong>Anonymous</strong></span>
-            <button type="button" id="change-name-btn" class="link-btn" aria-label="Edit name">✎</button>
-            <button type="button" id="clear-name-btn" class="link-btn" aria-label="Clear name">✖</button>
-            
-        </div>
-        <div class="form-group">
-            <button type="submit" id="add-btn" class="primary-btn">
-                <span>🔍</span> Search
-            </button>
-        </div>
-    </form>
 </section>
+<!-- The bento/search UI has been moved to the dedicated music page -->
