@@ -196,6 +196,28 @@
     .now-playing-bar.expanded { max-height: 60vh; }
 }
 
+/* Hide the placeholder title text on mobile when the bar is minimized and there's no song.
+   Clicking the bar still expands it (adds .expanded) which will reveal the title again. */
+@media (max-width: 600px) {
+    .now-playing-bar.empty:not(.expanded) .np-title { display: none; }
+}
+
+/* Hide the song title (and artist) in the minimized bar on small screens so only
+   artwork, progress and controls are visible. Expanding the bar reveals the title. */
+@media (max-width: 600px) {
+    .now-playing-bar:not(.expanded) .np-title,
+    .now-playing-bar:not(.expanded) .np-artist {
+        display: none;
+    }
+    /* Ensure thumbnail and controls stay visible */
+    .now-playing-bar:not(.expanded) .np-thumb,
+    .now-playing-bar:not(.expanded) .now-playing-bar-right,
+    .now-playing-bar:not(.expanded) .now-playing-bar-center {
+        display: flex;
+        align-items: center;
+    }
+}
+
 @media (max-width: 600px) {
     .now-playing-bar.expanded { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 8px)); min-height: auto; }
     .now-playing-bar.expanded .now-playing-bar-left { display:flex; align-items:center; gap:12px; }

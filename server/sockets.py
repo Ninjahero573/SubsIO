@@ -6,6 +6,7 @@ import traceback
 
 from . import socketio, connected_clients, playback_state, queue_manager
 from flask import request
+from flask_login import current_user
 
 
 @socketio.on('connect')
@@ -20,6 +21,27 @@ def handle_connect():
     browser_count = sum(1 for c in connected_clients.values() if not c.get('is_bridge'))
     print(f'  Total: {bridge_count} bridge(s), {browser_count} browser(s)')
     # No user announced yet; clients may announce their username separately.
+    # If the connecting socket has an authenticated Flask user, record it so
+    # the presence list reflects logged-in users across devices.
+    try:
+        if current_user and getattr(current_user, 'is_authenticated', False):
+            name = getattr(current_user, 'display_name', None) or getattr(current_user, 'email', None) or ''
+            connected_clients[sid]['user'] = {'name': name, 'user_id': getattr(current_user, 'id', None)}
+            print(f"🔐 Associated authenticated user for {sid}: {name}")
+            # Broadcast updated user list to everyone so presence reflects this immediately
+            try:
+                users = []
+                for s, info in connected_clients.items():
+                    if info.get('is_bridge'):
+                        continue
+                    u = info.get('user') or {}
+                    short_id = (s[:8] + '..') if isinstance(s, str) and len(s) > 8 else s
+                    users.append({'id': short_id, 'name': u.get('name') or 'Anonymous'})
+                socketio.emit('user_list', {'users': users})
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 @socketio.on('announce_bridge')
@@ -50,6 +72,18 @@ def handle_announce_user(data):
         connected_clients[sid] = {}
     connected_clients[sid]['user'] = {'name': name}
     print(f"👥 User announced for {sid}: {name}")
+    # Broadcast updated user list to all connected browsers so everyone sees the change
+    try:
+        users = []
+        for s, info in connected_clients.items():
+            if info.get('is_bridge'):
+                continue
+            u = info.get('user') or {}
+            short_id = (s[:8] + '..') if isinstance(s, str) and len(s) > 8 else s
+            users.append({'id': short_id, 'name': u.get('name') or 'Anonymous'})
+        socketio.emit('user_list', {'users': users})
+    except Exception:
+        pass
 
 
 @socketio.on('request_user_list')
@@ -81,6 +115,18 @@ def handle_disconnect():
     bridge_count = sum(1 for c in connected_clients.values() if c.get('is_bridge'))
     browser_count = sum(1 for c in connected_clients.values() if not c.get('is_bridge'))
     print(f'  Total: {bridge_count} bridge(s), {browser_count} browser(s)')
+    # Broadcast updated user list to everyone so presence reflects disconnects
+    try:
+        users = []
+        for s, info in connected_clients.items():
+            if info.get('is_bridge'):
+                continue
+            u = info.get('user') or {}
+            short_id = (s[:8] + '..') if isinstance(s, str) and len(s) > 8 else s
+            users.append({'id': short_id, 'name': u.get('name') or 'Anonymous'})
+        socketio.emit('user_list', {'users': users})
+    except Exception:
+        pass
 
 
 @socketio.on('request_current_state')

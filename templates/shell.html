@@ -82,13 +82,17 @@
         <div class="site-menu-header">
             <div id="site-menu-title" class="site-menu-title">
                 <div id="menu-avatar" class="menu-avatar" aria-hidden="true"></div>
-                <div id="menu-title-text" class="menu-title-text">Menu</div>
+                <div class="menu-user-line">
+                    <div id="menu-title-text" class="menu-title-text">Menu</div>
+                    <div id="menu-token" class="menu-token" aria-hidden="true" style="display:none;"></div>
+                </div>
             </div>
             <button id="site-menu-close" class="link-btn" title="Close menu">✕</button>
         </div>
         <div class="site-menu-list">
             <button id="menu-main" role="menuitem" class="site-menu-item">Music</button>
             <button id="menu-games" role="menuitem" class="site-menu-item">Games</button>
+            <button id="menu-admin" role="menuitem" class="site-menu-item" style="display: none;">Admin</button>
             <!-- Register/Login moved to the menu header when signed out -->
             <!-- Buttons removed to keep header as the primary auth control -->
             <button id="menu-logout" role="menuitem" class="site-menu-item" style="display: none;">Sign out</button>

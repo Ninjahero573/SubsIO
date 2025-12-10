@@ -64,6 +64,7 @@ export async function addSong(url, addedBy) {
     const resp = await fetch('/api/add_song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ url, added_by: addedBy })
     });
     const data = await resp.json();

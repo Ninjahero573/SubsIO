@@ -84,8 +84,38 @@
     (function(){
       const form = document.getElementById('login-form');
       const submitBtn = document.getElementById('login-submit');
-      form.addEventListener('submit', () => {
-        try { submitBtn.disabled = true; submitBtn.setAttribute('aria-busy','true'); } catch(e){}
+      const msg = document.getElementById('login-message');
+      function setMessage(text, type){
+        msg.textContent = text;
+        msg.className = 'auth-message ' + (type === 'error' ? 'error' : 'success');
+        try { msg.focus(); } catch(e){}
+      }
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        msg.textContent = '';
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy','true');
+        const formData = new URLSearchParams(new FormData(form));
+        try {
+          const resp = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData, credentials: 'same-origin' });
+          const data = await resp.json().catch(()=>({}));
+          if (resp.ok) {
+            setMessage(data.message || 'Signed in successfully', 'success');
+            // Announce to sockets (if available) so other clients see the name
+            try { if (window.announceCurrentUser) window.announceCurrentUser(); } catch(e) {}
+            // Close menu and load profile after a short pause so user sees toast
+            setTimeout(()=>{ try { if (window._shellLoadPage) window._shellLoadPage('profile'); else window.location.href = '/'; } catch(e){} }, 700);
+          } else {
+            const err = data.error || data.message || 'Sign in failed';
+            setMessage(err, 'error');
+          }
+        } catch (ex) {
+          setMessage('Network error — please try again', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.removeAttribute('aria-busy');
+          submitBtn.focus();
+        }
       });
     })();
 

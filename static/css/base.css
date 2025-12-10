@@ -41,7 +41,51 @@ body::before {
     height: 300vh;
     background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-color) 25%, var(--secondary-color) 50%, #1a1a2e 75%, var(--bg-dark) 100%);
     background-size: 200% 200%;
+    /* Darker gradient stops for a subtler, lower-contrast background.
+       Lighter-side tints slightly darkened to reduce contrast while keeping hues. */
+    background: linear-gradient(135deg,
+        #070b16 0%, /* very dark base */
+        #2f33b8 25%, /* slightly darker primary tint */
+        #5e2bd6 50%, /* slightly darker secondary tint */
+        #10121a 75%, /* deep mid tone */
+        #070b16 100% /* very dark base */
+    );
+    background-size: 200% 200%;
+    /* Animate background-position for motion (no rotate) */
     animation: gradientShift 60s ease-in-out infinite;
+    /* Hint to browser to promote this layer to composite for smoother animation */
+    will-change: background-position, transform;
+    transform: translateZ(0);
+    z-index: -2;
+}
+
+/* Add a second, blended gradient layer to produce richer, mixed colors
+   and varied motion without heavy transforms. This uses different
+   background positions/durations and a blend mode to mix with the base. */
+body::after {
+    content: '';
+    position: fixed;
+    top: -100vh;
+    left: -100vw;
+    width: 300vw;
+    height: 300vh;
+    /* Second layer uses same hues but slightly darker to blend more subtly */
+    background: linear-gradient(120deg,
+        rgba(92, 44, 159, 0.95) 0%,
+        rgba(44, 97, 185, 0.85) 25%,
+        rgba(12, 139, 97, 0.9) 50%,
+        rgba(187, 86, 16, 0.85) 75%,
+        rgba(92, 44, 159, 0.95) 100%
+    );
+    background-size: 300% 300%;
+    opacity: 0.16;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    /* Different timing and easing to create layered motion */
+    animation: gradientShift2 90s linear infinite;
+    will-change: background-position, opacity, transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
     z-index: -1;
 }
 
@@ -224,9 +268,32 @@ h2, h3 { margin-top: 0; }
 @keyframes textBlink { 0% { opacity: 1; transform: translateY(0); } 30% { opacity: 0.45; transform: translateY(0); } 60% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; transform: translateY(0); } }
 
 @keyframes gradientShift {
-    0% { background-position: 0% 50%; transform: rotate(0deg); }
-    50% { background-position: 100% 50%; transform: rotate(180deg); }
-    100% { background-position: 0% 50%; transform: rotate(360deg); }
+    /* Only shift the background-position to create a smooth gradient motion.
+       Removing rotate() reduces layout/repaint pressure on mobile browsers. */
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes gradientShift2 {
+    0% { background-position: 0% 0%; opacity: 0.16; }
+    25% { background-position: 50% 100%; opacity: 0.20; }
+    50% { background-position: 100% 50%; opacity: 0.18; }
+    75% { background-position: 50% 0%; opacity: 0.14; }
+    100% { background-position: 0% 50%; opacity: 0.16; }
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    body::before { animation-play-state: paused !important; }
+    body::after { animation-play-state: paused !important; }
+}
+
+/* Restore lively animation on small screens per user request (60s) */
+@media (max-width: 700px) {
+    /* Reduce pressure on mobile: slow main animation and disable overlay layer */
+    body::before { animation-duration: 120s; background-size: 150% 150%; }
+    body::after { animation: none !important; opacity: 0.12; background-size: 200% 200%; }
 }
 
 @media (max-width: 600px) {
@@ -373,9 +440,21 @@ body.menu-open { --menu-open: 1; }
 }
 .main-tile:hover, .main-tile:focus {
     transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 36px 90px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
-    background: linear-gradient(180deg, rgba(68,63,255,0.80), rgba(120,72,200,0.75));
-    border-color: rgba(99,102,241,0.85);
+    /* stronger shadow and slightly darker inset so tiles stand out from the animated background */
+    box-shadow: 0 36px 90px rgba(2,6,23,0.7), inset 0 1px 0 rgba(255,255,255,0.04);
+    /* Use a low-saturation, darker overlay on hover to preserve contrast with background motion
+       but still provide a subtle accent using the primary color as a faint tint. */
+    background: linear-gradient(180deg, rgba(12,14,30,0.92), rgba(22,18,38,0.9));
+    border-color: rgba(255,255,255,0.06);
+}
+
+/* Improve label/secondary text contrast when tile is hovered */
+.main-tile:hover .tile-label, .main-tile:focus .tile-label {
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+.main-tile:hover .tile-sub, .main-tile:focus .tile-sub {
+    color: rgba(241,245,249,0.85);
 }
 .main-tile:focus { outline: 3px solid rgba(99,102,241,0.14); outline-offset: 6px; }
 .main-tile .tile-icon { font-size: 48px; line-height: 1; }

@@ -27,6 +27,7 @@ def _ensure_db():
             created_at INTEGER,
             confirmed_at INTEGER,
             oauth_links TEXT,
+            token_balance INTEGER DEFAULT 10,
             avatar_filename TEXT
         )
         '''
@@ -36,9 +37,16 @@ def _ensure_db():
     try:
         cur = conn.execute("PRAGMA table_info('users')")
         cols = [r[1] for r in cur.fetchall()]
+        # Add avatar_filename if missing
         if 'avatar_filename' not in cols:
             conn.execute('ALTER TABLE users ADD COLUMN avatar_filename TEXT')
             conn.commit()
+            cols.append('avatar_filename')
+        # Add token_balance if missing (existing users will receive default 10)
+        if 'token_balance' not in cols:
+            conn.execute('ALTER TABLE users ADD COLUMN token_balance INTEGER DEFAULT 10')
+            conn.commit()
+            cols.append('token_balance')
     except Exception:
         # If anything goes wrong here, continue — table may be newly created or locked.
         pass
@@ -46,7 +54,7 @@ def _ensure_db():
 
 
 class User:
-    def __init__(self, id: int, email: str, display_name: str = None, is_active: bool = False, is_admin: bool = False, created_at: int = None, confirmed_at: int = None, oauth_links: dict = None, avatar_filename: str = None):
+    def __init__(self, id: int, email: str, display_name: str = None, is_active: bool = False, is_admin: bool = False, created_at: int = None, confirmed_at: int = None, oauth_links: dict = None, token_balance: int = 0, avatar_filename: str = None):
         self.id = id
         self.email = email
         self.display_name = display_name or ''
@@ -55,6 +63,7 @@ class User:
         self.created_at = created_at
         self.confirmed_at = confirmed_at
         self.oauth_links = oauth_links or {}
+        self.token_balance = int(token_balance) if token_balance is not None else 0
         self.avatar_filename = avatar_filename or None
 
     def get_id(self):
@@ -79,8 +88,9 @@ def create_user(email: str, password: str = None, display_name: str = None, requ
     pwd_hash = generate_password_hash(password) if password else None
     cur = conn.cursor()
     try:
-        cur.execute('INSERT INTO users (email, password_hash, display_name, is_active, created_at) VALUES (?,?,?,?,?)',
-                    (email.lower(), pwd_hash, display_name or '', 0 if require_confirm else 1, now))
+        # New users receive an initial token balance of 10
+        cur.execute('INSERT INTO users (email, password_hash, display_name, is_active, created_at, token_balance) VALUES (?,?,?,?,?,?)',
+                    (email.lower(), pwd_hash, display_name or '', 0 if require_confirm else 1, now, 10))
         conn.commit()
         uid = cur.lastrowid
         return get_user_by_id(uid)
@@ -90,28 +100,48 @@ def create_user(email: str, password: str = None, display_name: str = None, requ
         conn.close()
 
 
+def unlink_oauth(user_id: int, provider: str) -> None:
+    """Remove an oauth link for a user (does not revoke remote tokens).
+
+    Updates the `oauth_links` JSON column to remove the provider key.
+    """
+    conn = _ensure_db()
+    try:
+        cur = conn.execute('SELECT oauth_links FROM users WHERE id = ?', (user_id,))
+        row = cur.fetchone()
+        links = json.loads(row[0]) if row and row[0] else {}
+        if provider in links:
+            links.pop(provider, None)
+            conn.execute('UPDATE users SET oauth_links = ? WHERE id = ?', (json.dumps(links), user_id))
+            conn.commit()
+    finally:
+        conn.close()
+
+
 def get_user_by_email(email: str) -> Optional[User]:
     conn = _ensure_db()
-    cur = conn.execute('SELECT id,email,display_name,is_active,is_admin,created_at,confirmed_at,oauth_links,avatar_filename FROM users WHERE email = ?', (email.lower(),))
+    cur = conn.execute('SELECT id,email,display_name,is_active,is_admin,created_at,confirmed_at,oauth_links,token_balance,avatar_filename FROM users WHERE email = ?', (email.lower(),))
     row = cur.fetchone()
     conn.close()
     if not row:
         return None
     oauth_links = json.loads(row[7]) if row[7] else {}
-    avatar = row[8] if len(row) > 8 else None
-    return User(id=row[0], email=row[1], display_name=row[2], is_active=row[3], is_admin=row[4], created_at=row[5], confirmed_at=row[6], oauth_links=oauth_links, avatar_filename=avatar)
+    token_balance = row[8] if len(row) > 8 else 0
+    avatar = row[9] if len(row) > 9 else None
+    return User(id=row[0], email=row[1], display_name=row[2], is_active=row[3], is_admin=row[4], created_at=row[5], confirmed_at=row[6], oauth_links=oauth_links, token_balance=token_balance, avatar_filename=avatar)
 
 
 def get_user_by_id(uid: int) -> Optional[User]:
     conn = _ensure_db()
-    cur = conn.execute('SELECT id,email,display_name,is_active,is_admin,created_at,confirmed_at,oauth_links,avatar_filename FROM users WHERE id = ?', (uid,))
+    cur = conn.execute('SELECT id,email,display_name,is_active,is_admin,created_at,confirmed_at,oauth_links,token_balance,avatar_filename FROM users WHERE id = ?', (uid,))
     row = cur.fetchone()
     conn.close()
     if not row:
         return None
     oauth_links = json.loads(row[7]) if row[7] else {}
-    avatar = row[8] if len(row) > 8 else None
-    return User(id=row[0], email=row[1], display_name=row[2], is_active=row[3], is_admin=row[4], created_at=row[5], confirmed_at=row[6], oauth_links=oauth_links, avatar_filename=avatar)
+    token_balance = row[8] if len(row) > 8 else 0
+    avatar = row[9] if len(row) > 9 else None
+    return User(id=row[0], email=row[1], display_name=row[2], is_active=row[3], is_admin=row[4], created_at=row[5], confirmed_at=row[6], oauth_links=oauth_links, token_balance=token_balance, avatar_filename=avatar)
 
 
 def verify_password(email: str, password: str) -> Optional[User]:
@@ -183,5 +213,56 @@ def delete_user(user_id: int) -> Optional[str]:
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()
         return avatar
+    finally:
+        conn.close()
+
+
+def adjust_token_balance(user_id, delta):
+    """Adjust a user's token_balance by delta (can be negative).
+
+    Returns the new balance (int) or None if user not found.
+    """
+    _ensure_db()
+    db = sqlite3.connect(DB_FILE)
+    try:
+        cur = db.cursor()
+        # Ensure user exists
+        cur.execute('SELECT token_balance FROM users WHERE id = ?', (user_id,))
+        row = cur.fetchone()
+        if row is None:
+            return None
+        current = row[0] if row[0] is not None else 0
+        new = current + int(delta)
+        if new < 0:
+            new = 0
+        cur.execute('UPDATE users SET token_balance = ? WHERE id = ?', (new, user_id))
+        db.commit()
+        return new
+    finally:
+        db.close()
+
+def list_users() -> list:
+    """Return a list of users with non-sensitive fields suitable for admin views.
+
+    Each entry is a dict: id, email, display_name, is_active, is_admin, created_at, confirmed_at, avatar_filename
+    """
+    conn = _ensure_db()
+    try:
+        cur = conn.execute('SELECT id,email,display_name,is_active,is_admin,created_at,confirmed_at,token_balance,avatar_filename FROM users ORDER BY id ASC')
+        rows = cur.fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                'id': r[0],
+                'email': r[1],
+                'display_name': r[2],
+                'is_active': bool(r[3]),
+                'is_admin': bool(r[4]),
+                'created_at': r[5],
+                'confirmed_at': r[6],
+                'token_balance': int(r[7]) if r[7] is not None else 0,
+                'avatar_filename': r[8]
+            })
+        return out
     finally:
         conn.close()

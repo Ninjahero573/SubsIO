@@ -3,6 +3,9 @@ Configuration file for JukeboxLED
 Customize your setup here
 """
 
+import os
+from datetime import timedelta
+
 # ====================================
 # Server Configuration
 # ====================================
@@ -11,8 +14,9 @@ Customize your setup here
 HOST = '0.0.0.0'  # Listen on all network interfaces
 PORT = 80
 
-# Secret key for Flask (change this for production)
-SECRET_KEY = 'jukebox-secret-key-change-this-for-production'
+# Secret key for Flask (set in environment for production)
+# Use a strong random value; fallback is development-only.
+SECRET_KEY = os.getenv('SECRET_KEY', 'jukebox-secret-key-change-this-for-dev')
 
 # ====================================
 # LED Strip Configuration
@@ -85,8 +89,8 @@ COLOR_SCHEME = 'frequency'
 # Performance Configuration
 # ====================================
 
-# Enable debug mode
-DEBUG = True
+# Enable debug mode (set to 'True'|'False' via environment)
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 # Number of worker threads
 WORKER_THREADS = 4
@@ -105,6 +109,15 @@ VERBOSE = True
 OAUTH_REDIRECT_URI = 'https://subsio.us/auth/youtube/callback'
 # Base host used for generic flow redirects when an explicit redirect isn't set
 OAUTH_REDIRECT_BASE = 'https://subsio.us'
+
+# Session / cookie hardening (override via env if needed)
+# In production ensure `SESSION_COOKIE_SECURE` is True so cookies are only sent over HTTPS.
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'True').lower() in ('1', 'true', 'yes')
+SESSION_COOKIE_HTTPONLY = os.getenv('SESSION_COOKIE_HTTPONLY', 'True').lower() in ('1', 'true', 'yes')
+SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+
+# Remember-me cookie duration for Flask-Login (timedelta)
+REMEMBER_COOKIE_DURATION = timedelta(days=int(os.getenv('REMEMBER_DAYS', '14')))
 
 # Frequency ranges for spectrum analysis (Hz)
 FREQ_RANGES = {

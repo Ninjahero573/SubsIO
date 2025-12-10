@@ -17,8 +17,14 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 _TEMPLATES = os.path.join(_ROOT, 'templates')
 _STATIC = os.path.join(_ROOT, 'static')
 
+# Create app and load configuration from `config.py` so settings persist across restarts
 app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC, static_url_path='/static')
-app.config['SECRET_KEY'] = os.environ.get('JUKEBOX_SECRET', 'jukebox-secret-key-change-this')
+# Load defaults from config.py (which reads env vars). This makes SECRET_KEY,
+# cookie settings and REMEMBER_COOKIE_DURATION configurable via environment.
+import config as _config
+app.config.from_object(_config)
+# Backwards-compat: allow JUKEBOX_SECRET env to override SECRET_KEY
+app.config['SECRET_KEY'] = os.environ.get('JUKEBOX_SECRET', app.config.get('SECRET_KEY'))
 # Upload limits and avatar settings
 # Hard request size limit to protect the server from huge uploads (8 MB default)
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 8 * 1024 * 1024))

@@ -63,3 +63,7 @@ logs/
 # Audio processing temp files
 *.wav
 temp/
+
+# Auth artifacts (database and local encryption key)
+auth/*.db
+auth/.oauth_key

@@ -84,6 +84,8 @@ export function updateNowPlaying(song) {
             if (artistEl) artistEl.textContent = '';
             if (thumbImg) { thumbImg.style.display = 'none'; thumbImg.src = ''; }
             if (progFill) progFill.style.width = '0%';
+            // Mark bar as empty so we can hide the placeholder text in minimized state
+            bar.classList.add('empty');
         } else {
             if (elements.nowPlayingDiv) elements.nowPlayingDiv.innerHTML = `
                 <div class="empty-state">
@@ -103,6 +105,8 @@ export function updateNowPlaying(song) {
     if (bar) {
         state.currentSong = song;
         state.isPlaying = true;
+        // Clear empty state when a song is present
+        bar.classList.remove('empty');
         const titleEl = document.getElementById('np-title');
         const artistEl = document.getElementById('np-artist');
         const thumbImg = document.getElementById('np-thumb-img');

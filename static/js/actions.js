@@ -44,9 +44,20 @@ export async function removeSong(id, btn) {
 
 export async function addSong(url, btn) {
     if (btn && !ui.startAdding(btn)) return;
-    
-    const addedBy = (elements.addedByInput && elements.addedByInput.value.trim()) || state.youtubeDisplayName || state.spotifyDisplayName || 'Anonymous';
-    
+    // Prefer the server-side authenticated user's display name when available.
+    let addedBy = null;
+    try {
+        const meResp = await fetch('/api/me', { credentials: 'same-origin' });
+        if (meResp.ok) {
+            const meData = await meResp.json().catch(() => ({}));
+            if (meData && meData.user) addedBy = meData.user.display_name || meData.user.email || null;
+        }
+    } catch (e) {
+        addedBy = null;
+    }
+    // If not authenticated server-side, fall back to connected service display names or anonymous
+    if (!addedBy) addedBy = state.youtubeDisplayName || state.spotifyDisplayName || 'Anonymous';
+
     try {
         await api.addSong(url, addedBy);
         showMessage('Song added to queue!', 'success');
@@ -112,7 +123,18 @@ export async function loadSpotifyPlaylistTracks(playlistId) {
                     const s = await api.search(query, 1);
                     if (!s.results || !s.results.length) throw new Error('No matching YouTube result found');
                     const url = s.results[0].url;
-                    const addedBy = (elements.addedByInput && elements.addedByInput.value.trim()) || state.spotifyDisplayName || 'Spotify';
+                    // Prefer server-side authenticated user name for attribution
+                    let addedBy = null;
+                    try {
+                        const meResp = await fetch('/api/me', { credentials: 'same-origin' });
+                        if (meResp.ok) {
+                            const meData = await meResp.json().catch(() => ({}));
+                            if (meData && meData.user) addedBy = meData.user.display_name || meData.user.email || null;
+                        }
+                    } catch (e) {
+                        addedBy = null;
+                    }
+                    if (!addedBy) addedBy = state.spotifyDisplayName || 'Spotify';
                     await api.addSong(url, addedBy);
                     showMessage('Song added to queue!', 'success');
                     await loadQueue();

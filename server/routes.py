@@ -14,7 +14,18 @@ from config import OAUTH_REDIRECT_URI as DEFAULT_OAUTH_REDIRECT_URI, OAUTH_REDIR
 
 from . import app, socketio, queue_manager
 from auth.token_store import save_credentials, load_credentials, delete_credentials
-from auth.users import create_user, get_user_by_email, verify_password, get_user_by_id, confirm_user, set_avatar, delete_user
+from auth.users import (
+    create_user,
+    get_user_by_email,
+    verify_password,
+    get_user_by_id,
+    confirm_user,
+    set_avatar,
+    delete_user,
+    list_users,
+    adjust_token_balance,
+)
+from auth.users import link_oauth, find_user_by_oauth, unlink_oauth
 from werkzeug.utils import secure_filename
 from flask_login import login_user, logout_user, current_user, login_required
 import io
@@ -130,6 +141,13 @@ def add_song():
     data = request.json or {}
     song_url = data.get('url')
     added_by = data.get('added_by', 'Anonymous')
+    # Prefer server-side authenticated user name to prevent spoofing and ensure
+    # logged-in users are properly attributed regardless of client-provided value.
+    try:
+        if current_user and getattr(current_user, 'is_authenticated', False):
+            added_by = getattr(current_user, 'display_name', None) or getattr(current_user, 'email', added_by)
+    except Exception:
+        pass
     if not song_url:
         return jsonify({'error': 'No URL provided'}), 400
     try:
@@ -235,6 +253,24 @@ def youtube_login():
     return redirect(auth_url)
 
 
+@app.route('/auth/youtube/link')
+@login_required
+def youtube_link():
+    if not GOOGLE_OAUTH_AVAILABLE:
+        return jsonify({'error': 'Google OAuth libraries not installed'}), 500
+    cfg = _get_client_config()
+    ok, msg = _validate_client_config(cfg)
+    if not ok:
+        return jsonify({'error': 'oauth_misconfigured', 'details': msg}), 400
+    flow = Flow.from_client_config(cfg, scopes=["https://www.googleapis.com/auth/youtube.readonly"])
+    flow.redirect_uri = os.getenv('OAUTH_REDIRECT_URI', DEFAULT_OAUTH_REDIRECT_URI)
+    auth_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
+    session['oauth_state'] = state
+    # Mark that this flow is for linking to the current user's account
+    session['oauth_linking'] = {'user_id': int(current_user.id), 'provider': 'youtube'}
+    return redirect(auth_url)
+
+
 # --- Local account routes (registration / login / confirmation) ----------------
 _serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
@@ -286,13 +322,28 @@ def login():
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
         password = request.form.get('password') or ''
+        # Support `remember` coming from either form data or JSON payload
+        remember_raw = request.form.get('remember') if request.form else None
+        if remember_raw is None:
+            try:
+                remember_raw = (request.json or {}).get('remember')
+            except Exception:
+                remember_raw = None
+        remember = str(remember_raw).lower() in ('1', 'true', 'yes', 'on') if remember_raw is not None else False
+
         user = verify_password(email, password)
         if not user:
-            return render_template('confirm.html', status='error', message='Invalid email or password.'), 401
+            return jsonify({'error': 'invalid_credentials', 'message': 'Invalid email or password.'}), 401
         if not user.is_active:
-            return render_template('confirm.html', status='error', message='Account not confirmed. Please check your email.'), 403
-        login_user(user)
-        return render_template('confirm.html', status='success', message='Signed in successfully. Redirecting you back to the app...')
+            return jsonify({'error': 'not_confirmed', 'message': 'Account not confirmed. Please check your email.'}), 403
+        # Use Flask-Login's remember functionality to persist login across restarts
+        try:
+            login_user(user, remember=remember)
+        except TypeError:
+            # Fallback in case login_user signature differs; call without remember
+            login_user(user)
+        # Return JSON so SPA can show an inline notification instead of a new page
+        return jsonify({'success': True, 'message': 'Signed in successfully.'})
     # For GET requests (partial loading), return a simple hint; shell loads the partial HTML directly.
     return jsonify({'info': 'POST email,password to login'})
 
@@ -303,6 +354,12 @@ def logout():
         logout_user()
     except Exception:
         pass
+    # Clear any OAuth session bindings so playlists won't be shown after logout
+    for key in ('oauth_user_youtube', 'youtube_user_id', 'oauth_user_spotify', 'spotify_user_id'):
+        try:
+            session.pop(key, None)
+        except Exception:
+            pass
     return redirect(url_for('index'))
 
 
@@ -340,6 +397,97 @@ def delete_account():
     return jsonify({'success': True})
 
 
+@app.route('/admin/users/tokens', methods=['POST'])
+@login_required
+def admin_adjust_tokens():
+    """Adjust a user's token balance by an integer delta. Admin only.
+
+    Expects JSON: { user_id: <id>, delta: <int> }
+    Returns: { user_id: <id>, token_balance: <new> }
+    """
+    if not getattr(current_user, 'is_admin', False):
+        return jsonify({'error': 'forbidden'}), 403
+
+    data = request.json or request.form or {}
+    uid = data.get('user_id') or data.get('id')
+    delta = data.get('delta')
+    try:
+        uid = int(uid)
+    except Exception:
+        return jsonify({'error': 'invalid_user_id'}), 400
+    try:
+        delta = int(delta)
+    except Exception:
+        return jsonify({'error': 'invalid_delta'}), 400
+
+    # Prevent accidental self-lockout? allow adjusting self, but client can avoid.
+    try:
+        new = adjust_token_balance(uid, delta)
+    except Exception as e:
+        app.logger.exception('Failed to adjust tokens for %s: %s', uid, e)
+        return jsonify({'error': 'adjust_failed', 'details': str(e)}), 500
+
+    if new is None:
+        return jsonify({'error': 'user_not_found'}), 404
+
+    return jsonify({'user_id': uid, 'token_balance': new})
+
+
+@app.route('/admin/users', methods=['GET'])
+@login_required
+def admin_list_users():
+    """Return JSON list of all users for admin UI."""
+    try:
+        if not getattr(current_user, 'is_admin', False):
+            return jsonify({'error': 'forbidden'}), 403
+        users = list_users()
+        return jsonify({'users': users})
+    except Exception as e:
+        app.logger.exception('Failed to list users')
+        return jsonify({'error': 'internal_error', 'details': str(e)}), 500
+
+
+@app.route('/admin/users/delete', methods=['POST'])
+@login_required
+def admin_delete_user():
+    """Delete a user by id (admin only). Expects JSON { user_id: <id> } or form data."""
+    if not getattr(current_user, 'is_admin', False):
+        return jsonify({'error': 'forbidden'}), 403
+
+    data = request.json or request.form or {}
+    uid = data.get('user_id') or data.get('id') or data.get('uid')
+    try:
+        uid = int(uid)
+    except Exception:
+        return jsonify({'error': 'invalid_user_id'}), 400
+
+    # Prevent admin from accidentally deleting themselves
+    try:
+        if int(current_user.id) == uid:
+            return jsonify({'error': 'cannot_delete_self'}), 400
+    except Exception:
+        pass
+
+    try:
+        avatar_filename = delete_user(uid)
+    except Exception as e:
+        app.logger.exception('Failed to delete user %s', uid)
+        return jsonify({'error': 'delete_failed', 'details': str(e)}), 500
+
+    # Remove avatar file if present
+    if avatar_filename:
+        try:
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            avatar_path = os.path.join(project_root, 'static', 'uploads', 'avatars', avatar_filename)
+            if os.path.exists(avatar_path):
+                os.remove(avatar_path)
+        except Exception:
+            # non-fatal
+            pass
+
+    return jsonify({'success': True})
+
+
 @app.route('/api/me', methods=['GET'])
 def api_me():
     if not current_user or not getattr(current_user, 'id', None):
@@ -353,7 +501,8 @@ def api_me():
         'display_name': current_user.display_name,
         'is_active': current_user.is_active,
         'is_admin': current_user.is_admin,
-        'avatar_url': avatar_url
+        'avatar_url': avatar_url,
+        'token_balance': getattr(current_user, 'token_balance', 0)
     }})
 
 
@@ -561,7 +710,22 @@ def youtube_callback():
 
     try:
         save_credentials(user_id, creds_dict)
-        session['youtube_user_id'] = user_id
+        # If this OAuth callback was initiated to link to a logged-in user's account,
+        # store credentials under a user-scoped key and record mapping in users table.
+        linking = session.pop('oauth_linking', None)
+        if linking and linking.get('provider') == 'youtube':
+            try:
+                link_uid = int(linking.get('user_id'))
+                # Record mapping between local user and provider id
+                link_oauth(link_uid, 'youtube', user_id)
+                user_key = f"user:{link_uid}:youtube"
+                save_credentials(user_key, creds_dict)
+                session['oauth_user_youtube'] = user_key
+            except Exception:
+                # Fallback: save under provider id in session
+                session['youtube_user_id'] = user_id
+        else:
+            session['youtube_user_id'] = user_id
     except Exception as e:
         print(f"⚠ Failed to save YouTube credentials: {e}")
 
@@ -599,7 +763,8 @@ def _get_generic_client_config(flow_name: str):
 @app.route('/auth/youtube/logout')
 def youtube_logout():
     """Sign the current YouTube user out: revoke token (best-effort), delete stored credentials, clear session."""
-    user_id = session.pop('youtube_user_id', None)
+    # Accept either the legacy 'youtube_user_id' or the user-scoped 'oauth_user_youtube'
+    user_id = session.pop('oauth_user_youtube', None) or session.pop('youtube_user_id', None)
     if user_id:
         try:
             creds = load_credentials(user_id)
@@ -636,6 +801,23 @@ def generic_oauth_login(flow_name: str):
     flow.redirect_uri = cfg['redirect']
     auth_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
     session[f'oauth_state_{flow_name}'] = state
+    return redirect(auth_url)
+
+
+@app.route('/auth/<flow_name>/link')
+@login_required
+def generic_oauth_link(flow_name: str):
+    if not GOOGLE_OAUTH_AVAILABLE:
+        return jsonify({'error': 'OAuth libraries not installed'}), 500
+    cfg = _get_generic_client_config(flow_name)
+    if not cfg:
+        return jsonify({'error': f'Configuration for flow {flow_name} not found'}), 400
+    scopes = cfg.get('scopes') or []
+    flow = Flow.from_client_config({'web': cfg['web']}, scopes=scopes)
+    flow.redirect_uri = cfg['redirect']
+    auth_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
+    session[f'oauth_state_{flow_name}'] = state
+    session['oauth_linking'] = {'user_id': int(current_user.id), 'provider': flow_name}
     return redirect(auth_url)
 
 
@@ -684,7 +866,20 @@ def generic_oauth_callback(flow_name: str):
                 'scopes': getattr(creds, 'scopes', None),
             }
         save_credentials(user_id, creds_dict)
-        session[f'oauth_user_{flow_name}'] = user_id
+        # If this OAuth callback was initiated to link to a logged-in user's account,
+        # store credentials under a user-scoped key and record mapping in users table.
+        linking = session.pop('oauth_linking', None)
+        if linking and linking.get('provider') == flow_name:
+            try:
+                link_uid = int(linking.get('user_id'))
+                link_oauth(link_uid, flow_name, user_id)
+                user_key = f"user:{link_uid}:{flow_name}"
+                save_credentials(user_key, creds_dict)
+                session[f'oauth_user_{flow_name}'] = user_key
+            except Exception:
+                session[f'oauth_user_{flow_name}'] = user_id
+        else:
+            session[f'oauth_user_{flow_name}'] = user_id
     except Exception as e:
         print(f"⚠ Failed to save credentials for {flow_name}: {e}")
 
@@ -723,7 +918,25 @@ def generic_oauth_logout(flow_name: str):
 def api_youtube_playlists():
     if not GOOGLE_OAUTH_AVAILABLE:
         return jsonify({'error': 'Google OAuth libraries not installed'}), 500
-    user_id = session.get('youtube_user_id')
+    user_id = session.get('youtube_user_id') or session.get('oauth_user_youtube')
+    # If no session key, but a logged-in user exists, try the user-scoped credentials saved in token_store
+    if not user_id and getattr(current_user, 'is_authenticated', False):
+        try:
+            uid = int(current_user.id)
+            user_key = f"user:{uid}:youtube"
+            try:
+                creds_check = load_credentials(user_key)
+                if creds_check:
+                    user_id = user_key
+                    # Persist into session so subsequent requests in this session skip the fallback
+                    try:
+                        session['oauth_user_youtube'] = user_key
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        except Exception:
+            pass
     if not user_id:
         return jsonify({'error': 'not_authenticated'}), 401
 
@@ -762,7 +975,23 @@ def api_youtube_playlists():
 def api_youtube_playlist_items(playlist_id: str):
     if not GOOGLE_OAUTH_AVAILABLE:
         return jsonify({'error': 'Google OAuth libraries not installed'}), 500
-    user_id = session.get('youtube_user_id')
+    user_id = session.get('youtube_user_id') or session.get('oauth_user_youtube')
+    if not user_id and getattr(current_user, 'is_authenticated', False):
+        try:
+            uid = int(current_user.id)
+            user_key = f"user:{uid}:youtube"
+            try:
+                creds_check = load_credentials(user_key)
+                if creds_check:
+                    user_id = user_key
+                    try:
+                        session['oauth_user_youtube'] = user_key
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        except Exception:
+            pass
     if not user_id:
         return jsonify({'error': 'not_authenticated'}), 401
 
@@ -815,7 +1044,24 @@ def api_youtube_playlist_items(playlist_id: str):
 
 # --- Spotify helper endpoints ----------------------------------------------
 def _spotify_user_id_from_session():
-    return session.get('oauth_user_spotify')
+    user_id = session.get('oauth_user_spotify') or session.get('spotify_user_id')
+    if not user_id and getattr(current_user, 'is_authenticated', False):
+        try:
+            uid = int(current_user.id)
+            user_key = f"user:{uid}:spotify"
+            try:
+                creds_check = load_credentials(user_key)
+                if creds_check:
+                    try:
+                        session['oauth_user_spotify'] = user_key
+                    except Exception:
+                        pass
+                    return user_key
+            except Exception:
+                pass
+        except Exception:
+            pass
+    return user_id
 
 
 def _load_spotify_creds(user_id: str):
@@ -981,6 +1227,61 @@ def api_spotify_playlist_tracks(playlist_id: str):
         if not data.get('next'):
             break
     return jsonify({'items': items, 'count': len(items)})
+
+
+@app.route('/api/account/oauth_links', methods=['GET'])
+@login_required
+def api_account_oauth_links():
+    """Return which OAuth providers are linked for the current logged-in user."""
+    try:
+        uid = int(current_user.id)
+    except Exception:
+        return jsonify({'links': {}})
+    user = get_user_by_id(uid)
+    links = user.oauth_links or {}
+    out = {}
+    for provider in ('youtube', 'spotify'):
+        linked = provider in links
+        # Also check for user-scoped credentials
+        user_key = f"user:{uid}:{provider}"
+        try:
+            creds = load_credentials(user_key)
+        except Exception:
+            creds = None
+        out[provider] = {'linked': bool(linked or creds is not None)}
+    return jsonify({'links': out})
+
+
+@app.route('/account/unlink/<provider>', methods=['POST'])
+@login_required
+def account_unlink(provider: str):
+    try:
+        uid = int(current_user.id)
+    except Exception:
+        return jsonify({'error': 'not_authenticated'}), 401
+    provider = provider.lower()
+    user = get_user_by_id(uid)
+    provider_id = (user.oauth_links or {}).get(provider)
+    # Remove stored credentials for the user-scoped key
+    user_key = f"user:{uid}:{provider}"
+    try:
+        delete_credentials(user_key)
+    except Exception:
+        pass
+    # Optionally remove provider-scoped credentials if present
+    if provider_id:
+        try:
+            delete_credentials(provider_id)
+        except Exception:
+            pass
+    # Remove link mapping in users table
+    try:
+        unlink_oauth(uid, provider)
+    except Exception:
+        pass
+    # Clear session entry if present
+    session.pop(f'oauth_user_{provider}', None)
+    return jsonify({'success': True})
 
 
 @app.route('/admin/oauth_config', methods=['GET'])

@@ -8,7 +8,7 @@ import { initializeSocket, setupSocketHandlers } from './socket.js';
 import { setupMediaControlHandlers, setupFormHandler, setupSearchHandlers, setupBentoHandlers, setupNowPlayingQueueToggle, setupHeaderHandlers } from './handlers.js';
 import { setupAuthHandlers, setupUsernameHandlers } from './auth.js';
 import { initNowPlayingExpand, adjustHeaderHeight, adjustNowPlayingHeight } from './ui.js';
-import { loadQueue, performSearch } from './actions.js';
+import { loadQueue, performSearch, loadYouTubePlaylists, loadSpotifyPlaylists } from './actions.js';
 import { debounce } from './utils.js';
 import * as audiostream from './audiostream.js';
 import { setupGamesMenuHandlers, setupGamesMediaControlHandlers, setupGamesAudioStreamHandlers, setupGamesWalletHandlers } from './games-handlers.js';
@@ -165,6 +165,7 @@ function initializePersistentElements() {
             const menuRegister = document.getElementById('menu-register');
             const menuLogin = document.getElementById('menu-login');
             const menuLogout = document.getElementById('menu-logout');
+            const menuAdmin = document.getElementById('menu-admin');
 
             if (user && (user.display_name || user.email)) {
                 const name = user.display_name || user.email;
@@ -189,6 +190,26 @@ function initializePersistentElements() {
                 if (menuRegister) menuRegister.style.display = 'none';
                 if (menuLogin) menuLogin.style.display = 'none';
                 if (menuLogout) menuLogout.style.display = '';
+                // Show token balance in menu next to name
+                const menuTokenEl = document.getElementById('menu-token');
+                if (menuTokenEl) {
+                    const balance = (typeof user.token_balance !== 'undefined') ? Number(user.token_balance) : 0;
+                    menuTokenEl.style.display = '';
+                    menuTokenEl.innerHTML = `<span class="menu-divider" aria-hidden="true">|</span> <span class="menu-tokens">${balance}</span> <span class="menu-tokens-label">Tokens</span>`;
+                    menuTokenEl.setAttribute('title', `${balance} Tokens`);
+                }
+                // Also update the connection indicator to include the user name
+                try {
+                    const ct = document.getElementById('connection-text');
+                    if (ct) {
+                        // store username for socket handlers to use
+                        ct.dataset.username = name;
+                        const base = (ct.textContent || '').split(' • ')[0] || '';
+                        ct.textContent = base ? `${base} • ${name}` : name;
+                    }
+                } catch (e) {}
+                // Show admin menu if user is admin
+                if (menuAdmin) menuAdmin.style.display = user.is_admin ? '' : 'none';
                 // Make the header title clickable to open profile
                 if (el) {
                     el.style.cursor = 'pointer';
@@ -212,10 +233,19 @@ function initializePersistentElements() {
                     avatarEl.innerHTML = '';
                     avatarEl.style.display = 'none';
                 }
+                // Clear any stored username on the connection indicator
+                try { const ct = document.getElementById('connection-text'); if (ct) { delete ct.dataset.username; const base = (ct.textContent || '').split(' • ')[0] || ''; ct.textContent = base; } } catch(e) {}
+                // Hide token display when signed out
+                const menuTokenEl = document.getElementById('menu-token');
+                if (menuTokenEl) {
+                    menuTokenEl.style.display = 'none';
+                    menuTokenEl.innerHTML = '';
+                }
                 // No user: ensure register/login buttons (if present) stay hidden and hide logout
                 if (menuRegister) menuRegister.style.display = 'none';
                 if (menuLogin) menuLogin.style.display = 'none';
                 if (menuLogout) menuLogout.style.display = 'none';
+                if (menuAdmin) menuAdmin.style.display = 'none';
                 // Make the header title clickable to open the combined auth panel
                 if (el) {
                     el.style.cursor = 'pointer';
@@ -351,6 +381,8 @@ async function loadPageContent(page, gameUrl = null) {
             contentUrl = '/static/partials/main-page.html';
         } else if (page === 'music') {
             contentUrl = '/static/partials/music-page.html';
+        } else if (page === 'admin-users') {
+            contentUrl = '/static/partials/admin-users.html';
         } else if (page === 'register' || page === 'login') {
             // Use a combined auth partial and let it pick the initial tab
             window._authInitialTab = (page === 'register') ? 'register' : 'login';
@@ -467,6 +499,24 @@ async function setupPageHandlers(page) {
             adjustHeaderHeight();
             adjustNowPlayingHeight();
         }, 100);
+
+        // Auto-load linked provider playlists when the user is signed in
+        (async function autoLoadPlaylists() {
+            try {
+                const resp = await fetch('/api/account/oauth_links', { credentials: 'same-origin' });
+                if (!resp.ok) return;
+                const data = await resp.json().catch(() => ({}));
+                const links = (data && data.links) || {};
+                if (links.youtube && links.youtube.linked) {
+                    try { await loadYouTubePlaylists(); } catch (e) { console.warn('Auto-load YouTube playlists failed', e); }
+                }
+                if (links.spotify && links.spotify.linked) {
+                    try { await loadSpotifyPlaylists(); } catch (e) { console.warn('Auto-load Spotify playlists failed', e); }
+                }
+            } catch (e) {
+                // ignore network errors
+            }
+        })();
         
     } else if (page === 'games') {
         // Setup games page specific handlers
@@ -551,6 +601,17 @@ function setupMenuNavigation() {
             }
         });
     }
+
+    // Admin menu navigation (only visible when is_admin)
+    const menuAdmin = document.getElementById('menu-admin');
+    if (menuAdmin) {
+        menuAdmin.addEventListener('click', async () => {
+            closeMenu();
+            if (currentPage !== 'admin-users') {
+                await loadPageContent('admin-users');
+            }
+        });
+    }
     
     if (siteMenuClose) {
         siteMenuClose.addEventListener('click', closeMenu);
@@ -605,7 +666,16 @@ function setupMenuNavigation() {
             } catch (e) {
                 console.warn('Logout request failed', e);
             }
-            // reload to clear any client state
+            // Immediately clear playlist UI so linked playlists don't remain visible
+            try {
+                if (elements.ytPlaylistsDiv) elements.ytPlaylistsDiv.innerHTML = '<div class="empty-state"><p>Sign in to YouTube to view playlists.</p></div>';
+                if (elements.ytPlaylistItemsDiv) elements.ytPlaylistItemsDiv.innerHTML = '<div class="empty-state"><p>Select a playlist to see songs.</p></div>';
+                if (elements.spPlaylistsDiv) elements.spPlaylistsDiv.innerHTML = '<div class="empty-state"><p>Sign in to Spotify to view playlists.</p></div>';
+                if (elements.spPlaylistItemsDiv) elements.spPlaylistItemsDiv.innerHTML = '<div class="empty-state"><p>Select a playlist to see tracks.</p></div>';
+            } catch (e) {
+                // ignore UI clearing errors
+            }
+            // reload to clear any remaining client state
             window.location.reload();
         });
     }

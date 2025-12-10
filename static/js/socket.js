@@ -27,9 +27,11 @@ export function setupSocketHandlers() {
             elements.indicatorDot.setAttribute('aria-hidden', 'false');
         }
         if (elements.connectionText) {
-            elements.connectionText.textContent = 'Connected';
+            // include username if available
+            const name = elements.connectionText.dataset && elements.connectionText.dataset.username;
             elements.connectionText.classList.remove('disconnected', 'connecting');
             elements.connectionText.classList.add('connected');
+            elements.connectionText.textContent = name ? `Connected • ${name}` : 'Connected';
         }
         if (elements.connectionIndicator) {
             elements.connectionIndicator.classList.remove('disconnected', 'connecting');
@@ -63,9 +65,10 @@ export function setupSocketHandlers() {
             elements.indicatorDot.setAttribute('aria-hidden', 'true');
         }
         if (elements.connectionText) {
-            elements.connectionText.textContent = 'Disconnected';
+            const name = elements.connectionText.dataset && elements.connectionText.dataset.username;
             elements.connectionText.classList.remove('connected', 'connecting');
             elements.connectionText.classList.add('disconnected');
+            elements.connectionText.textContent = name ? `Disconnected • ${name}` : 'Disconnected';
         }
         if (elements.connectionIndicator) {
             elements.connectionIndicator.classList.remove('connected', 'connecting');
@@ -282,7 +285,7 @@ function stopPresencePoll() {
     try { if (state.presencePollInterval) { clearInterval(state.presencePollInterval); state.presencePollInterval = null; } } catch (e) {}
 }
 
-function updatePresencePopup(users) {
+async function updatePresencePopup(users) {
     const popup = document.getElementById('presence-popup');
     if (!popup) return;
     const header = popup.querySelector('.presence-header');
@@ -297,14 +300,48 @@ function updatePresencePopup(users) {
         list.appendChild(li);
         return;
     }
+
+    // Try to get the authenticated user from the server so we can show their name instead of "Anonymous"
+    let me = null;
+    try {
+        const resp = await fetch('/api/me', { credentials: 'same-origin' });
+        if (resp.ok) {
+            const js = await resp.json().catch(()=>({}));
+            me = js && js.user ? js.user : null;
+        }
+    } catch (e) {
+        me = null;
+    }
+
+    // If the current user appears in the list by name, mark that entry as (you).
+    // Otherwise, prepend a "You" entry so the signed-in user is visible.
+    const meName = me && (me.display_name || me.email) ? (me.display_name || me.email) : null;
+
+    let foundSelf = false;
     users.forEach(u => {
         const li = document.createElement('div');
         li.className = 'presence-item';
         const name = u.name || u.short_id || 'Anonymous';
         const id = u.short_id ? ` (${u.short_id})` : '';
-        li.textContent = name + id;
+        // If this entry matches the authenticated user's name or email, annotate it
+        if (meName && (name === meName || name === me.email)) {
+            li.textContent = name + (id || '') + ' (you)';
+            li.classList.add('you');
+            foundSelf = true;
+        } else {
+            li.textContent = name + id;
+        }
         list.appendChild(li);
     });
+
+    if (meName && !foundSelf) {
+        const li = document.createElement('div');
+        li.className = 'presence-item you';
+        li.textContent = `${meName} (you)`;
+        // Insert at top so the user's own entry is visible first
+        if (list.firstChild) list.insertBefore(li, list.firstChild);
+        else list.appendChild(li);
+    }
 }
 
 function showPresencePopup(users, loading = false) {

@@ -8,6 +8,12 @@
       <p><strong>Email:</strong> <span id="profile-email">—</span></p>
       <p><strong>Display name:</strong> <span id="profile-displayname">—</span></p>
     </div>
+    <div id="profile-oauth-links" style="margin-top:12px;">
+      <h3 style="margin-top:12px;">Connected Accounts</h3>
+      <div id="oauth-links-list">
+        <!-- Populated by JS: youtube, spotify -->
+      </div>
+    </div>
     <form id="avatar-form" action="/account/avatar" method="post" enctype="multipart/form-data">
       <label for="avatar-input">Upload avatar (PNG, JPG, WEBP)</label>
       <input id="avatar-input" name="avatar" type="file" accept="image/png,image/jpeg,image/webp">
@@ -81,6 +87,7 @@
     }
 
     await loadProfile();
+      await loadOAuthLinks();
 
     // Upload form posts normally so server handles authorization and stores avatar
     form.addEventListener('submit', (e) => {
@@ -88,6 +95,52 @@
       uploadBtn.disabled = true;
       uploadBtn.setAttribute('aria-busy', 'true');
     });
+    
+      async function loadOAuthLinks(){
+        const container = document.getElementById('oauth-links-list');
+        if(!container) return;
+        container.innerHTML = '<p>Loading linked accounts...</p>';
+        try{
+          const resp = await fetch('/api/account/oauth_links', { credentials: 'same-origin' });
+          const j = await resp.json().catch(()=>({}));
+          const links = (j && j.links) ? j.links : {};
+          container.innerHTML = '';
+          const providers = ['youtube','spotify'];
+          providers.forEach(p => {
+            const info = links[p] || { linked: false };
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.gap = '8px';
+            div.style.marginBottom = '8px';
+            const label = document.createElement('div');
+            label.textContent = p[0].toUpperCase() + p.slice(1);
+            label.style.flex = '1';
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            if(info.linked){
+              btn.textContent = 'Unlink';
+              btn.addEventListener('click', async (e)=>{
+                btn.disabled = true;
+                const r = await fetch(`/account/unlink/${p}`, { method: 'POST', credentials: 'same-origin' });
+                if(!r.ok){ alert('Failed to unlink '+p); btn.disabled = false; return; }
+                await loadOAuthLinks();
+              });
+            } else {
+              btn.textContent = 'Link';
+              btn.addEventListener('click', (e)=>{
+                // Redirect to link flow which will return to the app
+                window.location.href = `/auth/${p}/link`;
+              });
+            }
+            div.appendChild(label);
+            div.appendChild(btn);
+            container.appendChild(div);
+          });
+        }catch(e){
+          container.innerHTML = '<p>Failed to load linked accounts.</p>';
+        }
+      }
 
     toLogin.addEventListener('click', async (e)=>{
       e.preventDefault();

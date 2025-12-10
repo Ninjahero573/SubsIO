@@ -6,12 +6,25 @@ import * as ui from './ui.js';
 import * as actions from './actions.js';
 import { escapeHtml } from './utils.js';
 
-export function announceCurrentUser() {
+export async function announceCurrentUser() {
     try {
         if (!state.socket) return;
         if (!state.socket.connected) return;
         const stored = localStorage.getItem('jukebox_username');
-        const name = (stored && stored.trim()) || state.youtubeDisplayName || state.spotifyDisplayName || null;
+        let name = (stored && stored.trim()) || state.youtubeDisplayName || state.spotifyDisplayName || null;
+        // If no client-side name available, try to fetch authenticated user from server
+        if (!name) {
+            try {
+                const resp = await fetch('/api/me', { credentials: 'same-origin' });
+                if (resp.ok) {
+                    const js = await resp.json().catch(() => ({}));
+                    const user = js && js.user;
+                    if (user) name = user.display_name || user.email || null;
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
         if (name) {
             state.socket.emit('announce_user', { name: name });
         }
@@ -19,6 +32,9 @@ export function announceCurrentUser() {
         // ignore
     }
 }
+
+// Expose helper for non-module scripts to trigger announceCurrentUser after login
+try { window.announceCurrentUser = announceCurrentUser; } catch (e) {}
 
 export function setupAuthHandlers() {
     if (elements.youtubeLoginBtn) {

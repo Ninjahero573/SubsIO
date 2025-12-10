@@ -1,0 +1,127 @@
+<main class="page admin-page" id="admin-users-page" role="main">
+  <h2>Admin: User Management</h2>
+  <div id="admin-message" role="status" aria-live="polite"></div>
+  <div class="table-responsive">
+    <table id="admin-users-table" class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Name</th>
+        <th>Active</th>
+        <th>Admin</th>
+        <th>Tokens</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+(async function(){
+  const tableBody = document.querySelector('#admin-users-table tbody');
+  const msg = document.getElementById('admin-message');
+
+  async function fetchUsers(){
+    tableBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+    try{
+      const r = await fetch('/admin/users');
+      if(!r.ok){
+        const js = await r.json().catch(()=>({error:'unknown'}));
+        tableBody.innerHTML = `<tr><td colspan="6">Error: ${js.error || r.statusText}</td></tr>`;
+        return;
+      }
+      const data = await r.json();
+      const users = data.users || [];
+      if(users.length === 0){
+        tableBody.innerHTML = '<tr><td colspan="7">No users found</td></tr>';
+        return;
+      }
+      tableBody.innerHTML = '';
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="col-id">${u.id}</td>
+          <td class="col-email">${u.email}</td>
+          <td class="col-name">${u.display_name || ''}</td>
+          <td class="col-active">${u.is_active ? '<span class="status active">Yes</span>' : '<span class="status inactive">No</span>'}</td>
+          <td class="col-admin">${u.is_admin ? '<span class="status admin">Yes</span>' : '<span class="status">No</span>'}</td>
+          <td class="col-tokens">
+            <button class="token-btn token-dec" data-id="${u.id}" aria-label="Remove token">-</button>
+            <span class="token-count" data-id="${u.id}">${u.token_balance || 0}</span>
+            <button class="token-btn token-inc" data-id="${u.id}" aria-label="Add token">+</button>
+          </td>
+          <td class="col-actions"><button class="btn btn-danger btn-small admin-delete" data-id="${u.id}">Delete</button></td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }catch(e){
+      tableBody.innerHTML = '<tr><td colspan="7">Failed to load users.</td></tr>';
+    }
+  }
+
+  tableBody.addEventListener('click', async (ev) =>{
+    // Delete button
+    const delBtn = ev.target.closest('button.admin-delete');
+    if(delBtn){
+      const id = delBtn.getAttribute('data-id');
+      if(!confirm('Delete user ID '+id+'? This cannot be undone.')) return;
+      try{
+        delBtn.disabled = true;
+        const r = await fetch('/admin/users/delete', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: Number(id)})});
+        let js;
+        try{ js = await r.json(); }catch(e){ js = null }
+        if(!r.ok){
+          let details = js && js.error ? js.error : null;
+          if(!details){ try{ details = await r.text() }catch(e){ details = null } }
+          msg.textContent = 'Delete failed: '+(details || r.statusText || 'unknown');
+          delBtn.disabled = false;
+          return;
+        }
+        msg.textContent = 'User deleted.';
+        await fetchUsers();
+      }catch(e){
+        msg.textContent = 'Delete request failed.';
+      }
+      return;
+    }
+
+    // Token +/- buttons
+    const incBtn = ev.target.closest('button.token-inc');
+    const decBtn = ev.target.closest('button.token-dec');
+    const tokenBtn = incBtn || decBtn;
+    if(tokenBtn){
+      const id = Number(tokenBtn.getAttribute('data-id'));
+      const delta = incBtn ? 1 : -1;
+      // Disable the button while in-flight
+      tokenBtn.disabled = true;
+      try{
+        const r = await fetch('/admin/users/tokens', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: id, delta})});
+        let js;
+        try{ js = await r.json(); }catch(e){ js = null }
+        if(!r.ok){
+          let details = js && js.error ? js.error : null;
+          if(!details){ try{ details = await r.text() }catch(e){ details = null } }
+          msg.textContent = 'Update failed: '+(details || r.statusText || 'unknown');
+          tokenBtn.disabled = false;
+          return;
+        }
+        // Update the token count in the row
+        const span = tableBody.querySelector(`.token-count[data-id="${id}"]`);
+        if(span) span.textContent = js && typeof js.token_balance !== 'undefined' ? js.token_balance : span.textContent;
+        msg.textContent = 'Token balance updated.';
+      }catch(e){
+        msg.textContent = 'Token update request failed.';
+      }finally{
+        tokenBtn.disabled = false;
+      }
+      return;
+    }
+  });
+
+  // Initial load
+  fetchUsers();
+})();
+</script>
