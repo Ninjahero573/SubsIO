@@ -1,0 +1,130 @@
+<main class="page auth-page" id="profile-page" role="main" aria-labelledby="profile-title">
+  <h2 id="profile-title">Profile</h2>
+  <div id="profile-area">
+    <div class="profile-avatar">
+      <div id="profile-avatar-display" class="profile-avatar-display" aria-hidden="true">No avatar</div>
+    </div>
+    <div id="profile-details" class="profile-details" aria-live="polite">
+      <p><strong>Email:</strong> <span id="profile-email">—</span></p>
+      <p><strong>Display name:</strong> <span id="profile-displayname">—</span></p>
+    </div>
+    <form id="avatar-form" action="/account/avatar" method="post" enctype="multipart/form-data">
+      <label for="avatar-input">Upload avatar (PNG, JPG, WEBP)</label>
+      <input id="avatar-input" name="avatar" type="file" accept="image/png,image/jpeg,image/webp">
+      <div class="form-actions">
+        <button id="avatar-upload-btn" type="submit" class="btn">Upload</button>
+      </div>
+    </form>
+    <div id="profile-message" class="auth-message" role="status" aria-live="polite"></div>
+    <div id="profile-need-login" class="message" style="display:none; margin-top:12px;">
+      <p>You must be signed in to upload an avatar.</p>
+      <p style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="to-login-btn" class="btn" aria-label="Sign in">Sign in</button>
+        <button id="to-register-btn" class="btn" aria-label="Register">Register</button>
+      </p>
+    </div>
+    <div id="profile-delete" style="margin-top:16px; display:none;">
+      <button id="delete-account-btn" class="btn btn-danger">Delete account</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  (async function(){
+    const display = document.getElementById('profile-avatar-display');
+    const emailEl = document.getElementById('profile-email');
+    const nameEl = document.getElementById('profile-displayname');
+    const form = document.getElementById('avatar-form');
+    const input = document.getElementById('avatar-input');
+    const uploadBtn = document.getElementById('avatar-upload-btn');
+    const msg = document.getElementById('profile-message');
+    const needLogin = document.getElementById('profile-need-login');
+    const toLogin = document.getElementById('to-login-btn');
+    const deleteArea = document.getElementById('profile-delete');
+    const deleteBtn = document.getElementById('delete-account-btn');
+
+    async function loadProfile() {
+      try {
+        const resp = await fetch('/api/me', { credentials: 'same-origin' });
+        const j = await resp.json().catch(()=>({}));
+        const user = j.user;
+        if (!user) {
+          // Not signed in — hide upload form and show sign-in prompt
+          form.style.display = 'none';
+          needLogin.style.display = '';
+          display.textContent = '';
+          display.textContent = '—';
+          emailEl.textContent = 'Not signed in';
+          nameEl.textContent = '—';
+          // hide delete button when anonymous
+          if (deleteArea) deleteArea.style.display = 'none';
+          return;
+        }
+
+        // Signed in — populate details and show upload form
+        form.style.display = '';
+        needLogin.style.display = 'none';
+        emailEl.textContent = user.email || '—';
+        nameEl.textContent = user.display_name || '—';
+        display.innerHTML = '';
+        if (user.avatar_url) {
+          const img = document.createElement('img'); img.src = user.avatar_url; img.alt = 'Avatar'; img.style.width='120px'; img.style.height='120px'; img.style.objectFit='cover'; img.style.borderRadius='8px'; display.appendChild(img);
+        } else {
+          const initials = (user.display_name || user.email || 'U').split(' ').map(s=>s[0]||'').join('').slice(0,2).toUpperCase();
+          display.textContent = initials;
+        }
+        // show delete button when signed in
+        if (deleteArea) deleteArea.style.display = '';
+      } catch (e) {
+        console.warn('Failed to load profile', e);
+      }
+    }
+
+    await loadProfile();
+
+    // Upload form posts normally so server handles authorization and stores avatar
+    form.addEventListener('submit', (e) => {
+      // disable submit to prevent double posts
+      uploadBtn.disabled = true;
+      uploadBtn.setAttribute('aria-busy', 'true');
+    });
+
+    toLogin.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      if (window._shellLoadPage) await window._shellLoadPage('login');
+    });
+    const toRegister = document.getElementById('to-register-btn');
+    if (toRegister) {
+      toRegister.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        if (window._shellLoadPage) await window._shellLoadPage('register');
+      });
+    }
+
+    // Delete account handler
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const ok = window.confirm('Are you sure you want to permanently delete your account? This cannot be undone.');
+        if (!ok) return;
+        try {
+          deleteBtn.disabled = true;
+          const resp = await fetch('/account/delete', { method: 'POST', credentials: 'same-origin' });
+          if (!resp.ok) {
+            const j = await resp.json().catch(()=>({}));
+            const err = j && j.error ? j.error : 'delete_failed';
+            alert('Account deletion failed: ' + err);
+            deleteBtn.disabled = false;
+            return;
+          }
+          // On success, reload to clear to unauthenticated state
+          window.location.href = '/';
+        } catch (e) {
+          console.warn('Failed to delete account', e);
+          alert('Account deletion failed');
+          deleteBtn.disabled = false;
+        }
+      });
+    }
+  })();
+</script>

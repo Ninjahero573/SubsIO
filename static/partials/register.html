@@ -1,0 +1,90 @@
+<main class="page auth-page" id="register-page" role="main" aria-labelledby="register-title">
+  <h2 id="register-title">Create an account</h2>
+  <form id="register-form" class="auth-form" action="/register" method="post" novalidate aria-describedby="register-message" aria-labelledby="register-title">
+    <div class="form-group">
+      <label for="reg-email">Email</label>
+      <input id="reg-email" name="email" type="email" required aria-required="true" autocomplete="email" inputmode="email" autofocus>
+    </div>
+    <div class="form-group">
+      <label for="reg-display">Display name <span class="visually-hidden">(optional)</span></label>
+      <input id="reg-display" name="display_name" type="text" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label for="reg-password">Password</label>
+      <input id="reg-password" name="password" type="password" required aria-required="true" autocomplete="new-password" minlength="8">
+      <small class="hint">Use at least 8 characters.</small>
+    </div>
+    <div class="form-actions">
+      <button id="register-submit" type="submit" class="btn">Create account</button>
+    </div>
+    <div id="register-message" class="auth-message" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+  </form>
+</main>
+
+<script>
+(() => {
+  const form = document.getElementById('register-form');
+  const msg = document.getElementById('register-message');
+  const submitBtn = document.getElementById('register-submit');
+
+  function setMessage(text, type) {
+    msg.textContent = text;
+    msg.className = 'auth-message ' + (type === 'error' ? 'error' : 'success');
+    if (type === 'error') {
+      msg.setAttribute('aria-live','assertive');
+    } else {
+      msg.setAttribute('aria-live','polite');
+    }
+    try { msg.focus(); } catch(e) {}
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    submitBtn.disabled = true;
+    submitBtn.setAttribute('aria-busy', 'true');
+    const formData = new URLSearchParams(new FormData(form));
+    try {
+      const resp = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData,
+        credentials: 'same-origin'
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok) {
+        // Show success and redirect to profile
+        setMessage('Account created! Redirecting you to the profile page', 'success');
+        form.querySelectorAll('input').forEach(i => i.setAttribute('aria-invalid','false'));
+        setTimeout(() => {
+          try {
+            if (window._shellLoadPage) {
+              window._shellLoadPage('profile');
+            } else {
+              window.location.href = '/';
+            }
+          } catch (e) { /* ignore */ }
+        }, 900);
+      } else {
+        const err = data.error || data.message || 'Registration failed';
+        setMessage(err, 'error');
+        if (err.toLowerCase().includes('email')) document.getElementById('reg-email').setAttribute('aria-invalid','true');
+        if (err.toLowerCase().includes('password')) document.getElementById('reg-password').setAttribute('aria-invalid','true');
+      }
+    } catch (ex) {
+      setMessage('Network error — please try again', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.removeAttribute('aria-busy');
+      submitBtn.focus();
+    }
+  });
+
+  form.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.activeElement && document.activeElement.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      submitBtn.click();
+    }
+  });
+})();
+</script>

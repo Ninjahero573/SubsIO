@@ -14,6 +14,14 @@ from config import OAUTH_REDIRECT_URI as DEFAULT_OAUTH_REDIRECT_URI, OAUTH_REDIR
 
 from . import app, socketio, queue_manager
 from auth.token_store import save_credentials, load_credentials, delete_credentials
+from auth.users import create_user, get_user_by_email, verify_password, get_user_by_id, confirm_user, set_avatar, delete_user
+from werkzeug.utils import secure_filename
+from flask_login import login_user, logout_user, current_user, login_required
+import io
+from PIL import Image, UnidentifiedImageError
+import imghdr
+from flask_login import login_user, logout_user, current_user
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 # Google OAuth / YouTube availability check (module import may fail in some envs)
 try:
@@ -225,6 +233,270 @@ def youtube_login():
     except Exception:
         pass
     return redirect(auth_url)
+
+
+# --- Local account routes (registration / login / confirmation) ----------------
+_serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
+        name = request.form.get('display_name') or ''
+        if not email or not password:
+            return jsonify({'error': 'email_and_password_required'}), 400
+        existing = get_user_by_email(email)
+        if existing:
+            return jsonify({'error': 'email_exists'}), 400
+        # Create the user and mark active immediately (no email confirmation)
+        user = create_user(email, password, name, require_confirm=False)
+        if not user:
+            return jsonify({'error': 'create_failed'}), 500
+        try:
+            # Auto-login the user so subsequent requests (e.g., /api/me) return the user
+            login_user(user)
+        except Exception:
+            # Non-fatal: if login fails for some reason, continue — user account exists
+            app.logger.exception('Auto-login after registration failed')
+        return jsonify({'success': True, 'message': 'account_created'})
+    # For GET return a simple JSON hint (frontend uses forms)
+    return jsonify({'info': 'POST email,password to register'})
+
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        data = _serializer.loads(token, salt='email-confirm', max_age=60 * 60 * 24 * 7)
+    except SignatureExpired:
+        return render_template('confirm.html', status='error', message='Confirmation token expired. Please request a new confirmation email.'), 400
+    except BadSignature:
+        return render_template('confirm.html', status='error', message='Invalid confirmation token.'), 400
+    user_id = data.get('user_id')
+    if not user_id:
+        return render_template('confirm.html', status='error', message='Invalid confirmation token.'), 400
+    confirm_user(user_id)
+    # Render a server-side confirmation page. The client shell will restore the last visited page from localStorage.
+    return render_template('confirm.html', status='success', message='Your account has been confirmed. Redirecting you back to the app...')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
+        user = verify_password(email, password)
+        if not user:
+            return render_template('confirm.html', status='error', message='Invalid email or password.'), 401
+        if not user.is_active:
+            return render_template('confirm.html', status='error', message='Account not confirmed. Please check your email.'), 403
+        login_user(user)
+        return render_template('confirm.html', status='success', message='Signed in successfully. Redirecting you back to the app...')
+    # For GET requests (partial loading), return a simple hint; shell loads the partial HTML directly.
+    return jsonify({'info': 'POST email,password to login'})
+
+
+@app.route('/logout')
+def logout():
+    try:
+        logout_user()
+    except Exception:
+        pass
+    return redirect(url_for('index'))
+
+
+@app.route('/account/delete', methods=['POST'])
+@login_required
+def delete_account():
+    # Delete the user's DB record and their avatar file if present, then log them out.
+    try:
+        uid = int(current_user.id)
+    except Exception:
+        return jsonify({'error': 'not_authenticated'}), 401
+
+    try:
+        avatar_filename = delete_user(uid)
+    except Exception as e:
+        app.logger.exception('Failed to delete user %s: %s', uid, e)
+        return jsonify({'error': 'delete_failed'}), 500
+
+    try:
+        logout_user()
+    except Exception:
+        pass
+
+    # Remove avatar file from disk if it exists
+    if avatar_filename:
+        try:
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            avatar_path = os.path.join(project_root, 'static', 'uploads', 'avatars', avatar_filename)
+            if os.path.exists(avatar_path):
+                os.remove(avatar_path)
+        except Exception:
+            # non-fatal
+            pass
+
+    return jsonify({'success': True})
+
+
+@app.route('/api/me', methods=['GET'])
+def api_me():
+    if not current_user or not getattr(current_user, 'id', None):
+        return jsonify({'user': None})
+    avatar_url = None
+    if getattr(current_user, 'avatar_filename', None):
+        avatar_url = url_for('static', filename=f'uploads/avatars/{current_user.avatar_filename}')
+    return jsonify({'user': {
+        'id': current_user.id,
+        'email': current_user.email,
+        'display_name': current_user.display_name,
+        'is_active': current_user.is_active,
+        'is_admin': current_user.is_admin,
+        'avatar_url': avatar_url
+    }})
+
+
+@app.route('/account/avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    # Accept multipart form with field 'avatar'
+    f = request.files.get('avatar')
+    if not f or f.filename == '':
+        return render_template('confirm.html', status='error', message='No file uploaded.'), 400
+    filename = secure_filename(f.filename)
+    orig_ext = os.path.splitext(filename)[1].lower()
+    allowed = {'.png', '.jpg', '.jpeg', '.webp'}
+    if orig_ext not in allowed:
+        return render_template('confirm.html', status='error', message='Unsupported image type.'), 400
+
+    data = f.read()
+    if not data:
+        return render_template('confirm.html', status='error', message='Empty upload.'), 400
+
+    # Load app-configured limits (with sensible defaults)
+    max_dim = app.config.get('AVATAR_MAX_DIM', 512)
+    max_bytes = app.config.get('AVATAR_MAX_BYTES', 100 * 1024)
+
+    # Try to open the image via Pillow
+    try:
+        img_buf = io.BytesIO(data)
+        img = Image.open(img_buf)
+        img.verify()
+        # Re-open for processing (verify() leaves file in unusable state)
+        img_buf.seek(0)
+        img = Image.open(img_buf)
+    except UnidentifiedImageError:
+        # Fallback: keep imghdr check if Pillow couldn't identify but imghdr can
+        kind = imghdr.what(None, h=data)
+        if kind not in ('png', 'jpeg', 'webp'):
+            return render_template('confirm.html', status='error', message='Uploaded file is not a valid image.'), 400
+        # Try to continue by loading into Pillow again
+        try:
+            img_buf = io.BytesIO(data)
+            img = Image.open(img_buf)
+        except Exception:
+            return render_template('confirm.html', status='error', message='Uploaded file could not be processed.'), 400
+    except Exception:
+        return render_template('confirm.html', status='error', message='Uploaded file could not be processed.'), 400
+
+    # Ensure image is in a usable mode
+    try:
+        img.load()
+    except Exception:
+        return render_template('confirm.html', status='error', message='Failed to read uploaded image.'), 400
+
+    # Resize if necessary (preserve aspect ratio)
+    try:
+        if max_dim and (img.width > max_dim or img.height > max_dim):
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    except Exception:
+        pass
+
+    # Choose candidate output formats (prefer original)
+    fmt = (img.format or '').upper()
+    candidates = []
+    if fmt in ('PNG', 'JPEG', 'JPG', 'WEBP'):
+        if fmt == 'JPG':
+            fmt = 'JPEG'
+        candidates.append(fmt)
+    # ensure these formats are available as fallbacks
+    for c in ('JPEG', 'PNG', 'WEBP'):
+        if c not in candidates:
+            candidates.append(c)
+
+    out_bytes = None
+    out_ext = None
+
+    for out_fmt in candidates:
+        # Work on a copy of the image to avoid mutating original
+        work_img = img
+        buf = io.BytesIO()
+        try:
+            if out_fmt == 'PNG':
+                # PNG: try with optimize; if too large we'll try other formats
+                work_img.save(buf, format='PNG', optimize=True)
+                size = buf.tell()
+                if size <= max_bytes:
+                    out_bytes = buf.getvalue()
+                    out_ext = '.png'
+                    break
+            elif out_fmt in ('JPEG', 'WEBP'):
+                # JPEG/WEBP support quality parameter
+                # JPEG requires RGB
+                if out_fmt == 'JPEG' and work_img.mode in ('RGBA', 'LA', 'P'):
+                    bg = Image.new('RGB', work_img.size, (255, 255, 255))
+                    bg.paste(work_img.convert('RGBA'), mask=work_img.convert('RGBA'))
+                    work_img = bg
+                elif work_img.mode == 'P':
+                    work_img = work_img.convert('RGBA')
+
+                # Try decreasing quality until size constraint met
+                for q in (95, 85, 75, 65, 50, 40, 30):
+                    buf.seek(0)
+                    buf.truncate(0)
+                    save_kwargs = {'format': out_fmt, 'quality': q}
+                    if out_fmt == 'JPEG':
+                        save_kwargs.update({'optimize': True, 'progressive': True})
+                    try:
+                        work_img.save(buf, **save_kwargs)
+                    except Exception:
+                        # Some formats may not support given kwargs; try without
+                        buf.seek(0)
+                        buf.truncate(0)
+                        work_img.save(buf, format=out_fmt)
+                    size = buf.tell()
+                    if size <= max_bytes:
+                        out_bytes = buf.getvalue()
+                        out_ext = '.jpg' if out_fmt == 'JPEG' else '.webp'
+                        break
+                if out_bytes:
+                    break
+        except Exception:
+            # If this format failed, continue to next candidate
+            continue
+
+    if not out_bytes:
+        return render_template('confirm.html', status='error', message='Unable to compress image under size limit.'), 400
+
+    # Save file in static/uploads/avatars
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    upload_dir = os.path.join(project_root, 'static', 'uploads', 'avatars')
+    os.makedirs(upload_dir, exist_ok=True)
+    new_name = f'user_{current_user.id}_{int(time.time())}{out_ext}'
+    save_path = os.path.join(upload_dir, new_name)
+    try:
+        with open(save_path, 'wb') as out_f:
+            out_f.write(out_bytes)
+    except Exception:
+        return render_template('confirm.html', status='error', message='Failed to save avatar.'), 500
+
+    try:
+        set_avatar(current_user.id, new_name)
+    except Exception:
+        return render_template('confirm.html', status='error', message='Failed to save avatar.'), 500
+
+    return render_template('confirm.html', status='success', message='Avatar uploaded. Redirecting back to app...')
 
 
 @app.route('/auth/youtube/callback')

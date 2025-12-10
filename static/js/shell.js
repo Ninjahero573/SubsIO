@@ -87,10 +87,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('[Shell] Application shell initialized');
     
-    // Load the last visited page from localStorage, or default to 'main'
-    const lastPage = localStorage.getItem('lastVisitedPage') || 'main';
-    console.log('[Shell] About to load page:', lastPage);
-    await loadPageContent(lastPage);
+        // Load the page to show after startup. If we were just redirected after an
+        // authentication/confirmation flow, the confirmation page sets `authRedirect`.
+        // When present (value 'home') we prefer the home page instead of restoring
+        // the previously visited page. This ensures sign-in returns the user to
+        // the main/home view.
+        let lastPage;
+        try {
+            const forced = localStorage.getItem('authRedirect');
+            if (forced === 'home') {
+                lastPage = 'main';
+                localStorage.removeItem('authRedirect');
+            } else {
+                lastPage = localStorage.getItem('lastVisitedPage') || 'main';
+            }
+        } catch (e) {
+            lastPage = localStorage.getItem('lastVisitedPage') || 'main';
+        }
+        console.log('[Shell] About to load page:', lastPage);
+        await loadPageContent(lastPage);
     console.log('[Shell] Page content loaded');
     
     // Setup menu navigation
@@ -130,6 +145,111 @@ function initializePersistentElements() {
     }
     
     console.log('[Shell] Persistent elements initialized');
+
+    // Update menu title with logged-in user's display name when available
+    async function updateMenuUser() {
+        try {
+            const el = document.getElementById('site-menu-title');
+            const avatarEl = document.getElementById('menu-avatar');
+            const titleEl = document.getElementById('menu-title-text');
+            if (!el) return;
+            const resp = await fetch('/api/me', { credentials: 'same-origin' });
+            if (!resp.ok) {
+                if (titleEl) titleEl.textContent = 'Menu';
+                if (avatarEl) avatarEl.innerHTML = '';
+                return;
+            }
+            const data = await resp.json().catch(() => ({}));
+            const user = data && data.user;
+            // Find menu controls so we can show/hide appropriately
+            const menuRegister = document.getElementById('menu-register');
+            const menuLogin = document.getElementById('menu-login');
+            const menuLogout = document.getElementById('menu-logout');
+
+            if (user && (user.display_name || user.email)) {
+                const name = user.display_name || user.email;
+                if (titleEl) titleEl.textContent = name;
+                if (titleEl) titleEl.setAttribute('title', user.email || '');
+                if (avatarEl) {
+                    avatarEl.style.display = '';
+                    avatarEl.innerHTML = '';
+                    if (user.avatar_url) {
+                        const img = document.createElement('img');
+                        img.src = user.avatar_url;
+                        img.alt = '';
+                        img.className = 'menu-avatar-img';
+                        avatarEl.appendChild(img);
+                    } else {
+                        // Initials fallback
+                        const initials = (user.display_name || user.email || 'U').split(' ').map(s => s[0]||'').join('').slice(0,2).toUpperCase();
+                        avatarEl.textContent = initials;
+                    }
+                }
+                // Hide register/login and show logout when signed in
+                if (menuRegister) menuRegister.style.display = 'none';
+                if (menuLogin) menuLogin.style.display = 'none';
+                if (menuLogout) menuLogout.style.display = '';
+                // Make the header title clickable to open profile
+                if (el) {
+                    el.style.cursor = 'pointer';
+                    el.setAttribute('role', 'button');
+                    el.setAttribute('tabindex', '0');
+                    el.onclick = async () => {
+                        await closeMenu();
+                        await loadPageContent('profile');
+                    };
+                    el.onkeydown = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            el.onclick();
+                        }
+                    };
+                }
+                } else {
+                if (titleEl) titleEl.textContent = 'Login / Register';
+                if (titleEl) titleEl.setAttribute('title', 'Click to sign in');
+                if (avatarEl) {
+                    avatarEl.innerHTML = '';
+                    avatarEl.style.display = 'none';
+                }
+                // No user: ensure register/login buttons (if present) stay hidden and hide logout
+                if (menuRegister) menuRegister.style.display = 'none';
+                if (menuLogin) menuLogin.style.display = 'none';
+                if (menuLogout) menuLogout.style.display = 'none';
+                // Make the header title clickable to open the combined auth panel
+                if (el) {
+                    el.style.cursor = 'pointer';
+                    el.setAttribute('role', 'button');
+                    el.setAttribute('tabindex', '0');
+                    el.onclick = async () => {
+                        // Open auth partial on login tab by default
+                        window._authInitialTab = 'login';
+                        await closeMenu();
+                        await loadPageContent('login');
+                    };
+                    el.onkeydown = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            el.onclick();
+                        }
+                    };
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // Call once on init to populate menu title
+    updateMenuUser();
+
+    // Also refresh when the hamburger button is used
+    if (elements.hamburgerBtn) {
+        elements.hamburgerBtn.addEventListener('click', () => {
+            // small timeout so the menu open animation can begin before fetch
+            setTimeout(updateMenuUser, 80);
+        });
+    }
 
     // Delegated click handling on the page container to ensure handlers work after dynamic loads
     if (pageContainer) {
@@ -231,6 +351,12 @@ async function loadPageContent(page, gameUrl = null) {
             contentUrl = '/static/partials/main-page.html';
         } else if (page === 'music') {
             contentUrl = '/static/partials/music-page.html';
+        } else if (page === 'register' || page === 'login') {
+            // Use a combined auth partial and let it pick the initial tab
+            window._authInitialTab = (page === 'register') ? 'register' : 'login';
+            contentUrl = '/static/partials/auth.html';
+        } else if (page === 'profile') {
+            contentUrl = '/static/partials/profile.html';
         } else if (page === 'games') {
             contentUrl = '/static/partials/games-page.html';
         } else {
@@ -251,6 +377,21 @@ async function loadPageContent(page, gameUrl = null) {
         console.log(`[Shell] page-container before insert:`, pageContainer);
         
         pageContainer.innerHTML = html;
+        // Execute any inline scripts included in the partial HTML because
+        // setting innerHTML doesn't run script tags. Recreate script nodes
+        // so their code executes and module scripts load.
+        const scripts = Array.from(pageContainer.querySelectorAll('script'));
+        for (const oldScript of scripts) {
+            const newScript = document.createElement('script');
+            // copy attributes
+            for (const attr of oldScript.attributes) {
+                newScript.setAttribute(attr.name, attr.value);
+            }
+            // inline script content
+            if (oldScript.textContent) newScript.textContent = oldScript.textContent;
+            // replace the old script node so the browser will execute it
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        }
         currentPage = page;
         
         // Save the current page to localStorage so it persists across refreshes
@@ -413,6 +554,60 @@ function setupMenuNavigation() {
     
     if (siteMenuClose) {
         siteMenuClose.addEventListener('click', closeMenu);
+    }
+
+    // Register / Login / Logout menu handlers
+    const menuRegister = document.getElementById('menu-register');
+    const menuLogin = document.getElementById('menu-login');
+    const menuLogout = document.getElementById('menu-logout');
+
+    if (menuRegister) {
+        menuRegister.addEventListener('click', async () => {
+            closeMenu();
+            if (currentPage !== 'register') {
+                await loadPageContent('register');
+            }
+        });
+    }
+
+    if (menuLogin) {
+        menuLogin.addEventListener('click', async () => {
+            closeMenu();
+            if (currentPage !== 'login') {
+                await loadPageContent('login');
+            }
+        });
+    }
+    
+    // Make the menu header (avatar + name) clickable to open Profile when signed in
+    const menuTitle = document.getElementById('site-menu-title');
+    if (menuTitle) {
+        menuTitle.style.cursor = 'pointer';
+        menuTitle.addEventListener('click', async () => {
+            try {
+                // Only navigate to profile when a user is signed in (check api)
+                const resp = await fetch('/api/me', { credentials: 'same-origin' });
+                if (!resp.ok) return;
+                const data = await resp.json().catch(()=>({}));
+                if (data && data.user) {
+                    closeMenu();
+                    if (currentPage !== 'profile') await loadPageContent('profile');
+                }
+            } catch (e) { /* ignore */ }
+        });
+    }
+
+    if (menuLogout) {
+        menuLogout.addEventListener('click', async () => {
+            closeMenu();
+            try {
+                await fetch('/logout', { method: 'GET', credentials: 'same-origin' });
+            } catch (e) {
+                console.warn('Logout request failed', e);
+            }
+            // reload to clear any client state
+            window.location.reload();
+        });
     }
 }
 

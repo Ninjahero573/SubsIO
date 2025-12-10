@@ -1,0 +1,11 @@
+<div class="page auth-page" id="confirm-page" role="main">
+  <h2>Account confirmation</h2>
+  <div class="message success" id="confirm-message">Your account has been confirmed. You can now sign in.</div>
+  <p><a href="#" id="to-login">Go to sign in</a></p>
+
+<script>
+document.getElementById('to-login').addEventListener('click', async (e) => {
+  e.preventDefault();
+  if (window._shellLoadPage) await window._shellLoadPage('login');
+});
+</script>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Account confirmation</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <style>
+    .confirm-page { max-width:720px; margin:36px auto; padding:20px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); box-shadow:0 20px 60px rgba(2,6,23,0.6); }
+    .confirm-actions { margin-top:18px; display:flex; gap:12px; align-items:center; }
+    .confirm-actions .btn { padding:10px 14px; border-radius:10px; font-weight:700; }
+    .redirect-note { margin-top:10px; color:var(--text-secondary); font-size:0.95rem; }
+  </style>
+</head>
+<body>
+  <main class="confirm-page" role="main" aria-labelledby="confirm-title">
+    <h1 id="confirm-title">Account confirmation</h1>
+    {% if status == 'success' %}
+      <div class="message success" role="status" aria-live="polite">{{ message }}</div>
+    {% else %}
+      <div class="message error" role="alert" aria-live="assertive">{{ message }}</div>
+    {% endif %}
+
+    <p class="redirect-note">You will be returned to the app shortly. If not, use the button below.</p>
+
+    <div class="confirm-actions">
+      <a class="btn" id="go-back" href="/">Return to app</a>
+      <a class="btn" id="go-login" href="/">Go to Sign in</a>
+    </div>
+  </main>
+
+    <script>
+    // After confirming, redirect back to the shell root. Instead of letting the shell restore
+    // the previously visited page, set a short-lived localStorage flag so the shell will
+    // load the home page (main) after sign-in/confirmation.
+    (function() {
+      const status = '{{ status }}';
+      // Only auto-redirect on success
+      if (status === 'success') {
+        try {
+          localStorage.setItem('authRedirect', 'home');
+        } catch (e) {}
+        setTimeout(() => {
+          try {
+            window.location.href = '/';
+          } catch (e) {
+            // fallback: do nothing
+          }
+        }, 1200);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -17,8 +17,8 @@
     <!-- Top notifications: floating toasts appear here -->
     <div id="top-notifications" class="top-notifications" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Welcome modal: shown on first visit -->
-    <div id="welcome-modal" class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <!-- Welcome modal: shown on first visit (hidden by default to avoid flash) -->
+    <div id="welcome-modal" class="welcome-modal hidden" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <div class="welcome-modal-content">
             <button id="welcome-close" class="welcome-close" aria-label="Close welcome message">✕</button>
             <div class="welcome-header">
@@ -80,15 +80,18 @@
     <!-- Site menu popup toggled by hamburger -->
     <nav id="site-menu" class="site-menu" role="menu" aria-hidden="true">
         <div class="site-menu-header">
-            <div class="site-menu-title">Menu</div>
+            <div id="site-menu-title" class="site-menu-title">
+                <div id="menu-avatar" class="menu-avatar" aria-hidden="true"></div>
+                <div id="menu-title-text" class="menu-title-text">Menu</div>
+            </div>
             <button id="site-menu-close" class="link-btn" title="Close menu">✕</button>
         </div>
         <div class="site-menu-list">
             <button id="menu-main" role="menuitem" class="site-menu-item">Music</button>
             <button id="menu-games" role="menuitem" class="site-menu-item">Games</button>
-            <button role="menuitem" class="site-menu-item">Profile</button>
-            <button role="menuitem" class="site-menu-item">Settings</button>
-            <button role="menuitem" class="site-menu-item">Sign out</button>
+            <!-- Register/Login moved to the menu header when signed out -->
+            <!-- Buttons removed to keep header as the primary auth control -->
+            <button id="menu-logout" role="menuitem" class="site-menu-item" style="display: none;">Sign out</button>
         </div>
     </nav>
 

@@ -4,6 +4,7 @@ Server package initializer: creates Flask app, SocketIO and shared state.
 import os
 from flask import Flask
 from flask_socketio import SocketIO
+from flask_login import LoginManager
 
 from workers.queue_manager import QueueManager
 from workers.audio_analyzer import AudioAnalyzer
@@ -18,8 +19,29 @@ _STATIC = os.path.join(_ROOT, 'static')
 
 app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC, static_url_path='/static')
 app.config['SECRET_KEY'] = os.environ.get('JUKEBOX_SECRET', 'jukebox-secret-key-change-this')
+# Upload limits and avatar settings
+# Hard request size limit to protect the server from huge uploads (8 MB default)
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 8 * 1024 * 1024))
+# Avatar final size limit (bytes) and max dimension (px)
+app.config['AVATAR_MAX_BYTES'] = int(os.environ.get('AVATAR_MAX_BYTES', 2 * 1024 * 1024))
+app.config['AVATAR_MAX_DIM'] = int(os.environ.get('AVATAR_MAX_DIM', 512))
 
 socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=1e9, ping_timeout=60, ping_interval=25)
+
+# Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+from auth.users import get_user_by_id
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return get_user_by_id(int(user_id))
+    except Exception:
+        return None
 
 # Enable debug and exception propagation while troubleshooting server errors locally.
 # You can set this to False when running in production.

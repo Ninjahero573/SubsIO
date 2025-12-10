@@ -1,0 +1,33 @@
+<main class="page auth-page" id="login-page" role="main" aria-labelledby="login-title">
+  <h2 id="login-title">Sign in</h2>
+  <form id="login-form" class="auth-form" action="/login" method="post" novalidate aria-describedby="login-message" aria-labelledby="login-title">
+    <div class="form-group">
+      <label for="login-email">Email</label>
+      <input id="login-email" name="email" type="email" required autocomplete="email" inputmode="email" autofocus>
+    </div>
+    <div class="form-group">
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" required autocomplete="current-password">
+    </div>
+    <div class="form-actions">
+      <button id="login-submit" type="submit" class="btn">Sign in</button>
+    </div>
+    <div id="login-message" class="auth-message" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+  </form>
+</main>
+
+<script>
+(() => {
+  // Progressive enhancement: let the form submit normally so the browser follows
+  // server-rendered redirects (used to show the confirmation page). We only add
+  // a small UX improvement to disable the submit button while the request is in-flight.
+  const form = document.getElementById('login-form');
+  const submitBtn = document.getElementById('login-submit');
+  form.addEventListener('submit', () => {
+    try {
+      submitBtn.disabled = true;
+      submitBtn.setAttribute('aria-busy', 'true');
+    } catch (e) {}
+  });
+})();
+</script>

@@ -1,0 +1,130 @@
+<main class="page auth-page" id="auth-page" role="main" aria-labelledby="auth-title">
+  <h2 id="auth-title">Account</h2>
+
+  <div class="auth-toggle" style="margin-bottom:12px;">
+    <div class="auth-toggle-track">
+      <div class="auth-toggle-thumb" aria-hidden="true"></div>
+      <button id="auth-tab-login" class="auth-tab" aria-pressed="true">Sign in</button>
+      <button id="auth-tab-register" class="auth-tab" aria-pressed="false">Create account</button>
+    </div>
+  </div>
+
+  <section id="auth-login-section">
+    <form id="login-form" class="auth-form" action="/login" method="post" novalidate aria-describedby="login-message" aria-labelledby="login-title">
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input id="login-email" name="email" type="email" required autocomplete="email" inputmode="email" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" required autocomplete="current-password">
+      </div>
+      <div class="form-actions">
+        <button id="login-submit" type="submit" class="btn">Sign in</button>
+      </div>
+      <div id="login-message" class="auth-message" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+    </form>
+  </section>
+
+  <section id="auth-register-section" style="display:none;">
+    <form id="register-form" class="auth-form" action="/register" method="post" novalidate aria-describedby="register-message" aria-labelledby="register-title">
+      <div class="form-group">
+        <label for="reg-email">Email</label>
+        <input id="reg-email" name="email" type="email" required aria-required="true" autocomplete="email" inputmode="email">
+      </div>
+      <div class="form-group">
+        <label for="reg-display">Display name <span class="visually-hidden">(optional)</span></label>
+        <input id="reg-display" name="display_name" type="text" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="reg-password">Password</label>
+        <input id="reg-password" name="password" type="password" required aria-required="true" autocomplete="new-password" minlength="8">
+        <small class="hint">Use at least 8 characters.</small>
+      </div>
+      <div class="form-actions">
+        <button id="register-submit" type="submit" class="btn">Create account</button>
+      </div>
+      <div id="register-message" class="auth-message" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+    </form>
+  </section>
+</main>
+
+<script>
+  (function(){
+    const loginTab = document.getElementById('auth-tab-login');
+    const registerTab = document.getElementById('auth-tab-register');
+    const loginSection = document.getElementById('auth-login-section');
+    const registerSection = document.getElementById('auth-register-section');
+
+    function showTab(tab) {
+      const track = document.querySelector('.auth-toggle');
+      if (tab === 'register') {
+        registerSection.style.display = '';
+        loginSection.style.display = 'none';
+        registerTab.setAttribute('aria-pressed','true');
+        loginTab.setAttribute('aria-pressed','false');
+        track.classList.add('register-active');
+      } else {
+        registerSection.style.display = 'none';
+        loginSection.style.display = '';
+        registerTab.setAttribute('aria-pressed','false');
+        loginTab.setAttribute('aria-pressed','true');
+        track.classList.remove('register-active');
+      }
+    }
+
+    // Respect shell-specified initial tab or hash
+    const initial = (window._authInitialTab || location.hash.replace('#','') || 'login');
+    showTab(initial === 'register' ? 'register' : 'login');
+
+    loginTab.addEventListener('click', () => showTab('login'));
+    registerTab.addEventListener('click', () => showTab('register'));
+
+    // Login form: progressive enhancement, submit normally but disable while in-flight
+    (function(){
+      const form = document.getElementById('login-form');
+      const submitBtn = document.getElementById('login-submit');
+      form.addEventListener('submit', () => {
+        try { submitBtn.disabled = true; submitBtn.setAttribute('aria-busy','true'); } catch(e){}
+      });
+    })();
+
+    // Register form: submit via fetch for better UX and auto-redirect
+    (function(){
+      const form = document.getElementById('register-form');
+      const msg = document.getElementById('register-message');
+      const submitBtn = document.getElementById('register-submit');
+
+      function setMessage(text, type){
+        msg.textContent = text;
+        msg.className = 'auth-message ' + (type === 'error' ? 'error' : 'success');
+        try { msg.focus(); } catch(e){}
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        msg.textContent = '';
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy','true');
+        const formData = new URLSearchParams(new FormData(form));
+        try {
+          const resp = await fetch('/register', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData, credentials: 'same-origin' });
+          const data = await resp.json().catch(()=>({}));
+          if (resp.ok) {
+            setMessage('Account created! Redirecting you to the profile page', 'success');
+            setTimeout(()=>{ try { if (window._shellLoadPage) window._shellLoadPage('profile'); else window.location.href = '/'; } catch(e){} }, 900);
+          } else {
+            const err = data.error || data.message || 'Registration failed';
+            setMessage(err, 'error');
+          }
+        } catch (ex) {
+          setMessage('Network error — please try again', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.removeAttribute('aria-busy');
+          submitBtn.focus();
+        }
+      });
+    })();
+  })();
+</script>
