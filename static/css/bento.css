@@ -35,10 +35,15 @@
 	border-radius: 14px;
 	padding: 10px;
 	/* Use the JS-provided CSS var to cap height relative to width.
-	   Default to no cap if the var isn't set. Allow scrolling inside
-	   when content exceeds the cap. */
-	max-height: var(--box-max-h, none);
+	   Default to a sensible cap if the var isn't set (prevents unlimited growth).
+	   Allow scrolling inside when content exceeds the cap. */
+	max-height: var(--box-max-h, 500px);
 	overflow-y: auto;
+	display: grid; /* all containers use grid layout */
+	grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+	grid-auto-flow: row;
+	gap: 8px;
+	grid-auto-rows: auto;
 }
 /* Ensure playlists and items boxes within each column share height */
 .bento-card .youtube-panel .yt-column > .yt-playlists,
@@ -57,7 +62,11 @@
 
 /* Ensure playlist-items panels stretch and center their empty-state; layout for grid set in media query below */
 .bento-card .yt-playlist-items, .bento-card .sp-playlist-tracks {
-    display: block;
+    display: grid !important; /* use grid for items layout; media query refines column widths */
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    grid-auto-flow: row;
+    gap: 8px;
+    grid-auto-rows: auto;
     flex: 1 1 auto;
     min-height: 0;
 }
@@ -79,11 +88,12 @@
    set a smaller --box-max-h multiplier so boxes aren't forced too tall. */
 @media (min-width: 600px) {
 	.bento-card .yt-playlist-items, .bento-card .sp-playlist-tracks {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-		gap: 6px;
-		padding: 8px;
-		align-items: stretch;
+		display: grid !important;
+		grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+		grid-auto-flow: row;
+		gap: 8px;
+		padding: 10px;
+		grid-auto-rows: auto; /* ensure rows don't stretch or overlap */
 	}
 }
 

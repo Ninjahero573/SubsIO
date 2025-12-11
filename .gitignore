@@ -64,6 +64,9 @@ logs/
 *.wav
 temp/
 
-# Auth artifacts (database and local encryption key)
-auth/*.db
-auth/.oauth_key
+# Auth artifacts: ignore everything in `auth/` except two allowed files
+# Keep runtime DBs, local keys, and developer secrets out of commits. Allowlist
+# `token_store.py` and `users.py` which are part of the application logic.
+auth/
+!auth/token_store.py
+!auth/users.py

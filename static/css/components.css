@@ -363,9 +363,45 @@ button.adding { opacity: 0.7; pointer-events: none; transform: none !important; 
 	.admin-table .col-actions { width: auto; text-align: left; }
 }
 
-/* Responsive table wrapper to prevent horizontal overflow on small screens */
-.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.admin-table { min-width: 640px; }
+/* For mid-sized mobile viewports we allow a horizontal scroll so the table
+   layout remains consistent without squashing columns. This only applies
+   when viewport is at least 640px wide (wide phones / small tablets). */
+@media (min-width: 640px) and (max-width: 900px) {
+	.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+	.admin-table { min-width: 640px; }
+}
+
+/* For narrow phones (<640px) avoid forcing a min-width to prevent horizontal
+   scrollbars. Let table cells wrap and use table-layout:auto so content stacks
+   naturally within the available width. */
+@media (max-width: 639px) {
+	.table-responsive { overflow-x: visible; }
+	.admin-table { min-width: 0; width: 100%; table-layout: auto; }
+	.admin-table td, .admin-table th { white-space: normal; }
+}
+
+.admin-table { min-width: 0; width: 100%; }
 .admin-table td, .admin-table th { word-break: break-word; overflow-wrap: anywhere; }
+
+/* Responsive table wrapper: only enable horizontal scrolling on narrow viewports
+   so desktop layouts keep the full-width table without unexpected overflow. */
+@media (max-width: 900px) {
+	.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+	.admin-table { min-width: 640px; }
+}
+
+/* Desktop: ensure admin table uses available horizontal space and columns distribute nicely */
+@media (min-width: 901px) {
+	.table-responsive { overflow-x: visible; }
+	.admin-table { width: 100%; table-layout: fixed; }
+	.admin-table th, .admin-table td { padding: 14px 12px; }
+	.admin-table th { white-space: nowrap; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.85rem; }
+	.admin-table .col-id { width: 6%; }
+	.admin-table .col-email { width: 34%; }
+	.admin-table .col-name { width: 28%; }
+	.admin-table .col-active, .admin-table .col-admin { width: 8%; text-align: center; }
+	.admin-table .col-tokens { width: 12%; text-align: center; }
+	.admin-table .col-actions { width: 8%; text-align: center; }
+}
 .token-btn { margin: 0 4px; }
 
